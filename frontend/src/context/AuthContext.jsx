@@ -23,7 +23,6 @@ export function AuthProvider({ children }) {
 
     try {
       const data = await api.me();
-
       setUser(data.user || data);
     } catch {
       localStorage.removeItem("classquest_token");
@@ -39,7 +38,6 @@ export function AuthProvider({ children }) {
 
   async function login(username, password) {
     const data = await api.login(username, password);
-
     const token = data.token || data.accessToken;
 
     if (!token) {
@@ -47,11 +45,8 @@ export function AuthProvider({ children }) {
     }
 
     localStorage.setItem("classquest_token", token);
-
     const loggedUser = data.user;
-
     setUser(loggedUser);
-
     return loggedUser;
   }
 
@@ -61,14 +56,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
