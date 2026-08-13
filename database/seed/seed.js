@@ -1,35 +1,99 @@
-// Creates one admin account + a few demo students so you have
-// something to log in with immediately after migrating.
-// Usage (from backend/):  npm run seed
-require('dotenv').config({ path: require('path').join(__dirname, '..', '..', 'backend', '.env') });
-const bcrypt = require('bcryptjs');
-const { Pool } = require('pg');
+import bcrypt from "bcryptjs";
+import pg from "pg";
+import dotenv from "dotenv";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+dotenv.config();
 
-const USERS = [
-  { name: 'Admin', email: 'admin@classquest.local', username: 'admin', password: 'AdminPass123', role: 'admin' },
-  { name: 'Eyob Arega', email: 'eyob@classquest.local', username: 'eyob', password: 'StudentPass123', role: 'student', xp: 2310, rating: 1420, streak: 12 },
-  { name: 'Abel Tesfaye', email: 'abel@classquest.local', username: 'abel', password: 'StudentPass123', role: 'student', xp: 2450, rating: 1500, streak: 9 },
-  { name: 'Hana Kebede', email: 'hana@classquest.local', username: 'hana', password: 'StudentPass123', role: 'student', xp: 2080, rating: 1360, streak: 5 },
-];
+const { Client } = pg;
+
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
 
 async function seed() {
-  for (const u of USERS) {
-    const passwordHash = await bcrypt.hash(u.password, 10);
-    await pool.query(
-      `INSERT INTO users (name, email, username, password_hash, role, xp, rating, streak)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (email) DO NOTHING`,
-      [u.name, u.email, u.username, passwordHash, u.role, u.xp || 0, u.rating || 1000, u.streak || 0]
+  try {
+    await client.connect();
+
+    const adminPassword = await bcrypt.hash("Admin123!", 10);
+    const studentPassword = await bcrypt.hash("Student123!", 10);
+
+    await client.query(
+      `
+      INSERT INTO users (username, email, password_hash, full_name, role)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (username) DO NOTHING
+      `,
+      ["admin", "admin@classquest.com", adminPassword, "ClassQuest Admin", "admin"]
     );
-    console.log(`Seeded ${u.role}: ${u.username} / ${u.password}`);
+
+    await client.query(
+      `
+      INSERT INTO users (username, email, password_hash, full_name, role)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (username) DO NOTHING
+      `,
+      ["student1", "student1@classquest.com", studentPassword, "Test Student", "student"]
+    );
+
+    const challengeResult = await client.query(
+      `
+      INSERT INTO challenges (title, slug, description, difficulty, category, xp_reward)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (slug) DO NOTHING
+      RETURNING id
+      `,
+      [
+        "Sum Two Numbers",
+        "sum-two-numbers",
+        "Write a function solve(input) that receives a string of two space-separated integers and returns their sum as a string.\n\nExample: input \"2 3\" -> output \"5\"",
+        "easy",
+        "Variables",
+        100,
+      ]
+    );
+
+    let challengeId = challengeResult.rows[0]?.id;
+
+    if (!challengeId) {
+      const existing = await client.query(`SELECT id FROM challenges WHERE slug = $1`, ["sum-two-numbers"]);
+      challengeId = existing.rows[0]?.id;
+    }
+
+    if (challengeId) {
+      await client.query(
+        `
+        INSERT INTO challenge_languages (challenge_id, language, starter_code)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (challenge_id, language) DO NOTHING
+        `,
+        [
+          challengeId,
+          "javascript",
+          "function solve(input) {\n  // input is a string like \"2 3\"\n  const [a, b] = input.split(\" \").map(Number);\n  return String(a + b);\n}",
+        ]
+      );
+
+      await client.query(
+        `
+        INSERT INTO test_cases (challenge_id, input, expected_output, is_hidden, order_index)
+        VALUES
+          ($1, '2 3', '5', false, 0),
+          ($1, '10 15', '25', false, 1),
+          ($1, '-4 4', '0', true, 2),
+          ($1, '100 200', '300', true, 3)
+        `,
+        [challengeId]
+      );
+    }
+
+    console.log("Seed completed.");
+    console.log("Admin login:   admin / Admin123!");
+    console.log("Student login: student1 / Student123!");
+  } catch (error) {
+    console.error("Seed failed:", error);
+  } finally {
+    await client.end();
   }
-  await pool.end();
-  console.log('\nDone. You can now log in with any of the accounts above.');
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err.message);
-  process.exit(1);
-});
+seed();

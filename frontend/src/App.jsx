@@ -12,12 +12,14 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStudents from "./pages/AdminStudents";
+import AdminChallenges from "./pages/AdminChallenges";
 
 function Layout() {
   return (
@@ -36,6 +38,7 @@ function Layout() {
             <Route path="/challenges/:slug" element={<ChallengeDetail />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/students" element={<AdminStudents />} />
+            <Route path="/admin/challenges" element={<AdminChallenges />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -50,6 +53,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<Layout />} />

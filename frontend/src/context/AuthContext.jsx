@@ -45,9 +45,21 @@ export function AuthProvider({ children }) {
     }
 
     localStorage.setItem("classquest_token", token);
-    const loggedUser = data.user;
-    setUser(loggedUser);
-    return loggedUser;
+    setUser(data.user);
+    return data.user;
+  }
+
+  async function register({ username, email, password, fullName }) {
+    const data = await api.register({ username, email, password, fullName });
+    const token = data.token;
+
+    if (!token) {
+      throw new Error("Account created but no token was returned.");
+    }
+
+    localStorage.setItem("classquest_token", token);
+    setUser(data.user);
+    return data.user;
   }
 
   function logout() {
@@ -56,7 +68,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

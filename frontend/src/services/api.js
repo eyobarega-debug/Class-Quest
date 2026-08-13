@@ -33,6 +33,10 @@ export const api = {
     const res = await client.post("/auth/login", { username, password });
     return res.data;
   },
+  register: async ({ username, email, password, fullName }) => {
+    const res = await client.post("/auth/register", { username, email, password, fullName });
+    return res.data;
+  },
 
   // --- students (admin) ---
   students: async () => {

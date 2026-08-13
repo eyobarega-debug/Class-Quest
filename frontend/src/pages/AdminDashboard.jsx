@@ -43,10 +43,9 @@ export default function AdminDashboard() {
 
 function Card({ icon: Icon, title, description, link }) {
   return (
-    
+   <a> 
       href={link || "#"}
       className="border border-gray-800 bg-[#0d1117] p-6 hover:border-cyan-400/50 transition"
-    >
       <Icon className="text-cyan-400" size={25} />
       <h2 className="text-white font-bold mt-5">{title}</h2>
       <p className="text-gray-500 text-sm mt-2">{description}</p>

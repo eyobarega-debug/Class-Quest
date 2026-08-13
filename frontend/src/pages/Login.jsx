@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { Terminal, Lock, User } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -128,8 +128,11 @@ export default function Login() {
             {loading ? "AUTHENTICATING..." : "ENTER ARENA →"}
           </button>
 
-          <p className="text-center text-gray-600 text-xs mt-5 font-mono">
-            PRIVATE CLASS ACCESS • NO PUBLIC REGISTRATION
+         <p className="text-center text-gray-600 text-xs mt-5 font-mono">
+            New here?{" "}
+            <Link to="/register" className="text-cyan-400 hover:underline">
+              CREATE AN ACCOUNT
+            </Link>
           </p>
         </form>
       </div>
