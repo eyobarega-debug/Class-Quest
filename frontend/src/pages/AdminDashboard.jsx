@@ -51,4 +51,4 @@ function Card({ icon: Icon, title, description, link }) {
       <p className="text-gray-500 text-sm mt-2">{description}</p>
     </a>
   );
-}
+}   
