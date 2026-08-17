@@ -3,8 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
-import challengeRoutes from "./routes/challenge.routes.js";
+import challengeRoutes from "./routes/challengeRoutes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
+
 
 dotenv.config();
 
