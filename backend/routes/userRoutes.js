@@ -12,5 +12,6 @@ const router = express.Router();
 router.get('/', requireAuth, requireAdmin, asyncHandler(listStudents));
 router.post('/', requireAuth, requireAdmin, asyncHandler(createStudent));
 router.put('/:id/status', requireAuth, requireAdmin, asyncHandler(setStudentStatus));
+router.delete("/:id", asyncHandler(deleteStudent));
 
 module.exports = router;

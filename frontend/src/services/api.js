@@ -107,6 +107,9 @@ export const api = {
 
     return res.data;
   },
+  deleteStudent: async (id) => {
+  await client.delete(`/users/${id}`);
+},
 
   // ===============================
   // CHALLENGES

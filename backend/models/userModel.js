@@ -67,12 +67,23 @@ async function setActive(id, isActive) {
   );
   return rows[0] || null;
 }
+async function deleteStudent(id) {
+  const { rows } = await pool.query(
+    `DELETE FROM users
+     WHERE id = $1 AND role = 'student'
+     RETURNING ${PUBLIC_COLUMNS}`,
+    [id]
+  );
 
-module.exports = {
+  return rows[0] || null;
+}
+
+export {
   findByEmailOrUsername,
   findById,
   emailOrUsernameTaken,
   createUser,
   listStudents,
   setActive,
+  deleteStudent,
 };

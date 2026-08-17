@@ -8,6 +8,7 @@ const SELECT_COLUMNS = `
 
 export function formatUser(user) {
   if (!user) return null;
+
   const progress = getXpProgress(user.xp || 0);
 
   return {
@@ -57,10 +58,17 @@ export async function emailOrUsernameTaken(email, username) {
     `SELECT id FROM users WHERE email = $1 OR username = $2 LIMIT 1`,
     [email.toLowerCase(), username]
   );
+
   return result.rows.length > 0;
 }
 
-export async function createUser({ username, email, passwordHash, fullName, role = "student" }) {
+export async function createUser({
+  username,
+  email,
+  passwordHash,
+  fullName,
+  role = "student",
+}) {
   const result = await pool.query(
     `
     INSERT INTO users (username, email, password_hash, full_name, role)
@@ -73,7 +81,10 @@ export async function createUser({ username, email, passwordHash, fullName, role
   return result.rows[0];
 }
 
-export async function listStudents({ limit = 200, offset = 0 } = {}) {
+export async function listStudents({
+  limit = 200,
+  offset = 0,
+} = {}) {
   const result = await pool.query(
     `
     SELECT ${SELECT_COLUMNS} FROM users
@@ -89,7 +100,8 @@ export async function listStudents({ limit = 200, offset = 0 } = {}) {
 
 export async function setActive(id, isActive) {
   const result = await pool.query(
-    `UPDATE users SET is_active = $2, updated_at = NOW()
+    `UPDATE users
+     SET is_active = $2, updated_at = NOW()
      WHERE id = $1
      RETURNING ${SELECT_COLUMNS}`,
     [id, isActive]
@@ -98,9 +110,23 @@ export async function setActive(id, isActive) {
   return result.rows[0] || null;
 }
 
+// DELETE STUDENT
+export async function deleteStudent(id) {
+  const result = await pool.query(
+    `DELETE FROM users
+     WHERE id = $1
+     AND role = 'student'
+     RETURNING ${SELECT_COLUMNS}`,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
 export async function addXp(userId, amount) {
   const result = await pool.query(
-    `UPDATE users SET xp = xp + $2, updated_at = NOW()
+    `UPDATE users
+     SET xp = xp + $2, updated_at = NOW()
      WHERE id = $1
      RETURNING ${SELECT_COLUMNS}`,
     [userId, amount]
