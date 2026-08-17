@@ -1,4 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 
@@ -13,8 +18,14 @@ const languageConfig = {
   java: { monaco: "java" },
 };
 
+const MONITOR_URL = "http://127.0.0.1:3847";
+
 export default function ChallengeDetail() {
   const { slug } = useParams();
+
+  // ===============================
+  // STATE
+  // ===============================
 
   const [challenge, setChallenge] = useState(null);
   const [language, setLanguage] = useState("javascript");
@@ -24,25 +35,57 @@ export default function ChallengeDetail() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
 
+  const [testSession, setTestSession] = useState(null);
+  const [monitorStatus, setMonitorStatus] =
+    useState("checking");
+
+  const monitoringStarted = useRef(false);
+
+  // ===============================
+  // LOAD CHALLENGE
+  // ===============================
+
   const loadChallenge = useCallback(async () => {
     setLoading(true);
 
     try {
       const data = await api.challenge(slug);
+
       const item = data.challenge || data;
 
       setChallenge(item);
 
-      const languages = item.languages || item.challenge_languages || [];
+      const languages =
+        item.languages ||
+        item.challenge_languages ||
+        [];
 
       if (languages.length > 0) {
         const first = languages[0];
 
-        setLanguage(first.language || first.language_name || "javascript");
-        setCode(first.starter_code || first.code || "");
+        const firstLanguage =
+          first.language ||
+          first.language_name ||
+          "javascript";
+
+        setLanguage(firstLanguage);
+
+        setCode(
+          first.starter_code ||
+            first.code ||
+            ""
+        );
       }
     } catch (err) {
-      setResult({ type: "error", message: err.message });
+      console.error(
+        "Failed to load challenge:",
+        err
+      );
+
+      setResult({
+        type: "error",
+        message: err.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -52,59 +95,324 @@ export default function ChallengeDetail() {
     loadChallenge();
   }, [loadChallenge]);
 
+  // ===============================
+  // CHECK ELECTRON MONITOR
+  // ===============================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkMonitor() {
+      try {
+        const response = await fetch(
+          `${MONITOR_URL}/status`
+        );
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setMonitorStatus("offline");
+          }
+
+          return;
+        }
+
+        const data = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (data.monitoring) {
+          setMonitorStatus("monitoring");
+        } else {
+          setMonitorStatus("connected");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error(
+            "Monitor connection error:",
+            error
+          );
+
+          setMonitorStatus("offline");
+        }
+      }
+    }
+
+    checkMonitor();
+
+    const interval = setInterval(
+      checkMonitor,
+      3000
+    );
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // ===============================
+  // START MONITORING
+  // ===============================
+
+  useEffect(() => {
+    if (!challenge?.id) {
+      return;
+    }
+
+    if (
+      monitorStatus !== "connected" &&
+      monitorStatus !== "monitoring"
+    ) {
+      return;
+    }
+
+    if (monitoringStarted.current) {
+      return;
+    }
+
+    async function startMonitoring() {
+      try {
+        const token =
+          localStorage.getItem(
+            "classquest_token"
+          );
+
+        if (!token) {
+          console.error(
+            "No ClassQuest authentication token found."
+          );
+
+          return;
+        }
+
+        // --------------------------------
+        // Create / get database session
+        // --------------------------------
+
+        const data =
+          await api.startTestSession(
+            challenge.id
+          );
+
+        console.log(
+          "Test session response:",
+          data
+        );
+
+        if (!data?.session?.id) {
+          throw new Error(
+            "Test session was not created."
+          );
+        }
+
+        const session = data.session;
+
+        setTestSession(session);
+
+        // --------------------------------
+        // Start Electron monitor
+        // --------------------------------
+
+        const monitorResponse =
+          await fetch(
+            `${MONITOR_URL}/start`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                sessionId: session.id,
+
+                challengeId: challenge.id,
+
+                token,
+
+                // The monitor uses this
+                // to identify the ClassQuest page.
+                allowedTitle:
+                  challenge.title ||
+                  "ClassQuest",
+              }),
+            }
+          );
+
+        const monitorData =
+          await monitorResponse.json();
+
+        if (!monitorResponse.ok) {
+          throw new Error(
+            monitorData.message ||
+              "Failed to start Electron monitor."
+          );
+        }
+
+        monitoringStarted.current = true;
+
+        setMonitorStatus("monitoring");
+
+        console.log(
+          "================================"
+        );
+
+        console.log(
+          "CLASSQUEST MONITORING STARTED"
+        );
+
+        console.log(
+          "Session:",
+          session.id
+        );
+
+        console.log(
+          "Challenge:",
+          challenge.id
+        );
+
+        console.log(
+          "Allowed title:",
+          challenge.title
+        );
+
+        console.log(
+          "Monitor:",
+          monitorData.message
+        );
+
+        console.log(
+          "================================"
+        );
+      } catch (error) {
+        console.error(
+          "FAILED TO START MONITORING:",
+          error
+        );
+
+        setMonitorStatus("offline");
+      }
+    }
+
+    startMonitoring();
+  }, [challenge, monitorStatus]);
+
+  // ===============================
+  // STOP MONITOR
+  // ===============================
+
+  useEffect(() => {
+    return () => {
+      if (!monitoringStarted.current) {
+        return;
+      }
+
+      fetch(`${MONITOR_URL}/stop`, {
+        method: "POST",
+      }).catch(() => {});
+
+      monitoringStarted.current = false;
+
+      console.log(
+        "ClassQuest monitor stopped."
+      );
+    };
+  }, []);
+
+  // ===============================
+  // LANGUAGE
+  // ===============================
+
   function changeLanguage(newLanguage) {
     setLanguage(newLanguage);
 
-    const languages = challenge?.languages || challenge?.challenge_languages || [];
+    const languages =
+      challenge?.languages ||
+      challenge?.challenge_languages ||
+      [];
 
     const selected = languages.find(
-      (item) => (item.language || item.language_name) === newLanguage
+      (item) =>
+        (item.language ||
+          item.language_name) ===
+        newLanguage
     );
 
     if (selected) {
-      setCode(selected.starter_code || selected.code || "");
+      setCode(
+        selected.starter_code ||
+          selected.code ||
+          ""
+      );
     }
   }
+
+  // ===============================
+  // RUN CODE
+  // ===============================
 
   async function runCode() {
     setRunning(true);
 
     try {
-      const response = await api.runCode({
-        slug: challenge.slug,
-        language,
-        source_code: code,
-      });
+      const response =
+        await api.runCode({
+          slug: challenge.slug,
+          language,
+          source_code: code,
+        });
 
       setResult(response);
     } catch (err) {
-      setResult({ type: "error", message: err.message });
+      setResult({
+        type: "error",
+        message: err.message,
+      });
     } finally {
       setRunning(false);
     }
   }
+
+  // ===============================
+  // SUBMIT CODE
+  // ===============================
 
   async function submitCode() {
     setRunning(true);
 
     try {
-      const response = await api.submitCode({
-        slug: challenge.slug,
-        language,
-        source_code: code,
-      });
+      const response =
+        await api.submitCode({
+          slug: challenge.slug,
+          language,
+          source_code: code,
+        });
 
       setResult(response);
     } catch (err) {
-      setResult({ type: "error", message: err.message });
+      setResult({
+        type: "error",
+        message: err.message,
+      });
     } finally {
       setRunning(false);
     }
   }
 
+  // ===============================
+  // RESET
+  // ===============================
+
   function resetCode() {
     changeLanguage(language);
   }
+
+  // ===============================
+  // LOADING
+  // ===============================
 
   if (loading) {
     return (
@@ -115,15 +423,33 @@ export default function ChallengeDetail() {
   }
 
   if (!challenge) {
-    return <div className="text-red-400">Challenge not found.</div>;
+    return (
+      <div className="text-red-400">
+        Challenge not found.
+      </div>
+    );
   }
 
-  const languages = challenge.languages || challenge.challenge_languages || [];
+  const languages =
+    challenge.languages ||
+    challenge.challenge_languages ||
+    [];
+
+  // ===============================
+  // UI
+  // ===============================
 
   return (
     <div>
+
+      {/* ===============================
+          HEADER
+      =============================== */}
+
       <div className="mb-5">
+
         <div className="flex flex-wrap items-center gap-3 mb-3">
+
           <span className="text-xs border border-green-400/30 text-green-400 px-2 py-1">
             {challenge.difficulty}
           </span>
@@ -133,43 +459,98 @@ export default function ChallengeDetail() {
           </span>
 
           <span className="text-xs text-cyan-400 font-mono">
-            +{challenge.xp_reward || challenge.xp || 100} XP
+            +{challenge.xp_reward ||
+              challenge.xp ||
+              100} XP
           </span>
+
+          {/* MONITOR STATUS */}
+
+          <span
+            className={`text-xs px-2 py-1 font-mono ${
+              monitorStatus === "monitoring"
+                ? "text-green-400 border border-green-400/30"
+                : monitorStatus === "connected"
+                ? "text-yellow-400 border border-yellow-400/30"
+                : monitorStatus === "offline"
+                ? "text-red-400 border border-red-400/30"
+                : "text-yellow-400 border border-yellow-400/30"
+            }`}
+          >
+            MONITOR:{" "}
+            {monitorStatus.toUpperCase()}
+          </span>
+
         </div>
 
-        <h1 className="text-3xl font-bold text-white">{challenge.title}</h1>
+        <h1 className="text-3xl font-bold text-white">
+          {challenge.title}
+        </h1>
+
       </div>
 
+      {/* ===============================
+          MAIN CONTENT
+      =============================== */}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+
+        {/* ===============================
+            PROBLEM
+        =============================== */}
+
         <section className="border border-gray-800 bg-[#0d1117]">
+
           <div className="p-5 border-b border-gray-800">
-            <h2 className="font-bold text-white mb-4">PROBLEM</h2>
+
+            <h2 className="font-bold text-white mb-4">
+              PROBLEM
+            </h2>
 
             <div className="text-sm text-gray-400 whitespace-pre-wrap leading-7">
               {challenge.description}
             </div>
+
           </div>
 
           {challenge.constraints && (
             <div className="p-5 border-b border-gray-800">
-              <h3 className="text-xs text-gray-500 font-mono mb-3">CONSTRAINTS</h3>
+
+              <h3 className="text-xs text-gray-500 font-mono mb-3">
+                CONSTRAINTS
+              </h3>
+
               <div className="text-sm text-gray-400 whitespace-pre-wrap">
                 {challenge.constraints}
               </div>
+
             </div>
           )}
+
         </section>
 
+        {/* ===============================
+            CODE EDITOR
+        =============================== */}
+
         <section className="border border-gray-800 bg-[#0b0e13] overflow-hidden">
+
           <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
+
             <div className="flex gap-2">
+
               {languages.map((item) => {
-                const lang = item.language || item.language_name;
+
+                const lang =
+                  item.language ||
+                  item.language_name;
 
                 return (
                   <button
                     key={lang}
-                    onClick={() => changeLanguage(lang)}
+                    onClick={() =>
+                      changeLanguage(lang)
+                    }
                     className={`px-3 py-1.5 text-xs font-mono ${
                       language === lang
                         ? "bg-cyan-400 text-black"
@@ -179,36 +560,64 @@ export default function ChallengeDetail() {
                     {lang}
                   </button>
                 );
+
               })}
+
             </div>
 
-            <button onClick={resetCode} className="text-xs text-gray-500 hover:text-white">
+            <button
+              onClick={resetCode}
+              className="text-xs text-gray-500 hover:text-white"
+            >
               RESET
             </button>
+
           </div>
 
           <Editor
             height="500px"
-            language={languageConfig[language]?.monaco || language}
+
+            language={
+              languageConfig[language]
+                ?.monaco || language
+            }
+
             value={code}
-            onChange={(value) => setCode(value || "")}
+
+            onChange={(value) =>
+              setCode(value || "")
+            }
+
             theme="vs-dark"
+
             options={{
-              minimap: { enabled: false },
+              minimap: {
+                enabled: false,
+              },
+
               fontSize: 14,
-              fontFamily: "JetBrains Mono, monospace",
-              padding: { top: 15 },
+
+              fontFamily:
+                "JetBrains Mono, monospace",
+
+              padding: {
+                top: 15,
+              },
+
               automaticLayout: true,
             }}
           />
 
           <div className="border-t border-gray-800 p-3 flex gap-3">
+
             <button
               onClick={runCode}
               disabled={running}
               className="px-5 py-2 bg-[#151a22] border border-gray-700 text-white hover:border-cyan-400 disabled:opacity-50"
             >
-              {running ? "RUNNING..." : "▶ RUN"}
+              {running
+                ? "RUNNING..."
+                : "▶ RUN"}
             </button>
 
             <button
@@ -216,29 +625,51 @@ export default function ChallengeDetail() {
               disabled={running}
               className="px-5 py-2 bg-cyan-400 text-black font-bold hover:bg-cyan-300 disabled:opacity-50"
             >
-              ✓ SUBMIT
+              {running
+                ? "SUBMITTING..."
+                : "✓ SUBMIT"}
             </button>
+
           </div>
+
         </section>
+
       </div>
 
+      {/* ===============================
+          EXECUTION RESULT
+      =============================== */}
+
       <section className="mt-5 border border-gray-800 bg-[#0d1117]">
+
         <div className="px-5 py-3 border-b border-gray-800">
-          <h2 className="text-xs text-gray-500 font-mono">EXECUTION RESULT</h2>
+
+          <h2 className="text-xs text-gray-500 font-mono">
+            EXECUTION RESULT
+          </h2>
+
         </div>
 
         <div className="p-5">
+
           {!result ? (
             <p className="text-gray-600 font-mono text-sm">
               Run your code to see the result.
             </p>
           ) : (
             <pre className="text-sm text-gray-300 whitespace-pre-wrap">
-              {JSON.stringify(result, null, 2)}
+              {JSON.stringify(
+                result,
+                null,
+                2
+              )}
             </pre>
           )}
+
         </div>
+
       </section>
+
     </div>
   );
 }

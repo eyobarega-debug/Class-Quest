@@ -8,14 +8,15 @@ export default function AdminChallenges() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    difficulty: "easy",
-    category: "",
-    xpReward: 100,
-    starterCode: "",
-  });
+ const [form, setForm] = useState({
+  title: "",
+  description: "",
+  difficulty: "easy",
+  category: "",
+  xpReward: 100,
+  language: "javascript",
+  starterCode: "",
+});
 
   const [testCases, setTestCases] = useState([{ ...emptyTestCase }]);
 
@@ -58,7 +59,12 @@ export default function AdminChallenges() {
         difficulty: form.difficulty,
         category: form.category,
         xpReward: Number(form.xpReward) || 100,
-        languages: [{ language: "javascript", starterCode: form.starterCode }],
+       languages: [
+  {
+    language: form.language,
+    starterCode: form.starterCode,
+  },
+],
         testCases: testCases
           .filter((tc) => tc.expectedOutput.trim() !== "")
           .map((tc) => ({
@@ -69,7 +75,17 @@ export default function AdminChallenges() {
       });
 
       setMessage("Challenge created.");
-      setForm({ title: "", description: "", difficulty: "easy", category: "", xpReward: 100, starterCode: "" });
+setForm({
+  title: "",
+  description: "",
+  difficulty: "easy",
+  category: "",
+  xpReward: 100,
+  language: "javascript",
+  starterCode: `function solve(input) {
+  // Write your solution here
+}`,
+});
       setTestCases([{ ...emptyTestCase }]);
       loadChallenges();
     } catch (err) {
@@ -92,7 +108,9 @@ export default function AdminChallenges() {
 
       <div className="grid xl:grid-cols-3 gap-6">
         <form onSubmit={createChallenge} className="xl:col-span-2 border border-gray-800 bg-[#0d1117] p-6 space-y-3">
-          <h2 className="text-white font-bold mb-2">CREATE CHALLENGE (JavaScript)</h2>
+         <h2 className="text-white font-bold mb-2">
+  CREATE CHALLENGE
+</h2>
 
           {error && <div className="text-red-400 text-sm">{error}</div>}
           {message && <div className="text-green-400 text-sm">{message}</div>}
@@ -104,9 +122,47 @@ export default function AdminChallenges() {
             className="input"
             required
           />
+          <div>
+  <label className="block text-xs text-gray-500 font-mono mb-2">
+    PROGRAMMING LANGUAGE
+  </label>
 
+  <select
+    value={form.language}
+    onChange={(e) => {
+      const language = e.target.value;
+
+      const starterCodes = {
+        javascript: `function solve(input) {
+  // Write your solution here
+}`,
+        python: `def solve(input):
+    # Write your solution here
+    pass`,
+        cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    // Write your solution here
+    return 0;
+}`,
+      };
+
+      setForm({
+        ...form,
+        language,
+        starterCode: starterCodes[language],
+      });
+    }}
+    className="input"
+  >
+    <option value="javascript">JavaScript</option>
+    <option value="python">Python</option>
+    <option value="cpp">C++</option>
+  </select>
+</div>
           <textarea
-            placeholder="Description (explain what solve(input) should do)"
+            placeholder="Description (explain what the student should solve)"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="input min-h-24"

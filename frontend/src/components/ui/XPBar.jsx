@@ -1,29 +1,70 @@
-// The signature visual motif of ClassQuest: a segmented, glowing
-// progress bar (styled in index.css as .xp-bar-track / .xp-bar-fill)
-// instead of a plain rounded <div>. Used on the dashboard and the
-// profile page so both feel like the same product.
-export default function XPBar({ percent, xpIntoLevel, xpForNextLevel, size = 'md' }) {
-  const clamped = Math.max(0, Math.min(100, percent));
-  const height = size === 'lg' ? 'h-4' : 'h-2.5';
+// ClassQuest XP progress bar
+// Purple represents XP, levels, achievements,
+// and other gamification elements.
+
+export default function XPBar({
+  percent,
+  xpIntoLevel,
+  xpForNextLevel,
+  size = "md",
+}) {
+  const clamped = Math.max(
+    0,
+    Math.min(100, percent)
+  );
+
+  const height =
+    size === "lg" ? "h-4" : "h-2.5";
 
   return (
     <div className="w-full">
-      <div className={`xp-bar-track w-full ${height} rounded-full overflow-hidden border border-border-subtle`}>
+
+      {/* XP BAR */}
+
+      <div
+        className={`
+          w-full
+          ${height}
+          rounded-full
+          overflow-hidden
+          border
+          border-[#E2E8F0]
+          bg-[#F1F5F9]
+        `}
+      >
         <div
-          className={`xp-bar-fill ${height} rounded-full transition-all duration-700 ease-out`}
-          style={{ width: `${clamped}%` }}
+          className={`
+            ${height}
+            rounded-full
+            transition-all
+            duration-700
+            ease-out
+            bg-[#8B5CF6]
+          `}
+          style={{
+            width: `${clamped}%`,
+          }}
           role="progressbar"
           aria-valuenow={clamped}
           aria-valuemin={0}
           aria-valuemax={100}
         />
       </div>
-      {typeof xpIntoLevel === 'number' && typeof xpForNextLevel === 'number' && (
-        <div className="mt-1.5 flex justify-between font-mono text-xs text-text-muted">
-          <span>{xpIntoLevel} / {xpForNextLevel} XP</span>
-          <span>{clamped}%</span>
-        </div>
-      )}
+
+      {/* XP INFORMATION */}
+
+      {typeof xpIntoLevel === "number" &&
+        typeof xpForNextLevel === "number" && (
+          <div className="mt-1.5 flex justify-between font-mono text-xs text-[#64748B]">
+            <span>
+              {xpIntoLevel} / {xpForNextLevel} XP
+            </span>
+
+            <span className="text-[#8B5CF6] font-semibold">
+              {clamped}%
+            </span>
+          </div>
+        )}
     </div>
   );
 }

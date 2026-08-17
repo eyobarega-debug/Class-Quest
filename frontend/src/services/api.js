@@ -4,13 +4,23 @@ const client = axios.create({
   baseURL: "http://localhost:5000/api",
 });
 
+// ===============================
+// AUTH TOKEN
+// ===============================
+
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("classquest_token");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
+
+// ===============================
+// ERROR HANDLING
+// ===============================
 
 client.interceptors.response.use(
   (response) => response,
@@ -19,80 +29,269 @@ client.interceptors.response.use(
       error.response?.data?.message ||
       error.message ||
       "Something went wrong. Please try again.";
+
     return Promise.reject(new Error(message));
   }
 );
 
+// ===============================
+// API
+// ===============================
+
 export const api = {
-  // --- auth ---
+  // ===============================
+  // AUTH
+  // ===============================
+
   me: async () => {
     const res = await client.get("/auth/me");
     return res.data;
   },
+
   login: async (username, password) => {
-    const res = await client.post("/auth/login", { username, password });
-    return res.data;
-  },
-  register: async ({ username, email, password, fullName }) => {
-    const res = await client.post("/auth/register", { username, email, password, fullName });
+    const res = await client.post("/auth/login", {
+      username,
+      password,
+    });
+
     return res.data;
   },
 
-  // --- students (admin) ---
+  register: async ({
+    username,
+    email,
+    password,
+    fullName,
+  }) => {
+    const res = await client.post("/auth/register", {
+      username,
+      email,
+      password,
+      fullName,
+    });
+
+    return res.data;
+  },
+
+  // ===============================
+  // STUDENTS
+  // ===============================
+
   students: async () => {
     const res = await client.get("/users");
+
     return res.data.students;
   },
-  createStudent: async ({ username, email, password, fullName }) => {
-    const res = await client.post("/users", { username, email, password, fullName });
-    return res.data;
-  },
-  updateStudentStatus: async (id, isActive) => {
-    const res = await client.put(`/users/${id}/status`, { isActive });
+
+  createStudent: async ({
+    username,
+    email,
+    password,
+    fullName,
+  }) => {
+    const res = await client.post("/users", {
+      username,
+      email,
+      password,
+      fullName,
+    });
+
     return res.data;
   },
 
-  // --- challenges ---
+  updateStudentStatus: async (id, isActive) => {
+    const res = await client.put(
+      `/users/${id}/status`,
+      { isActive }
+    );
+
+    return res.data;
+  },
+
+  // ===============================
+  // CHALLENGES
+  // ===============================
+
   challenges: async (filters = {}) => {
     const params = {};
-    if (filters.search) params.search = filters.search;
-    if (filters.language) params.language = filters.language;
-    if (filters.difficulty) params.difficulty = filters.difficulty;
-    if (filters.category) params.category = filters.category;
 
-    const res = await client.get("/challenges", { params });
+    if (filters.search) {
+      params.search = filters.search;
+    }
+
+    if (filters.language) {
+      params.language = filters.language;
+    }
+
+    if (filters.difficulty) {
+      params.difficulty = filters.difficulty;
+    }
+
+    if (filters.category) {
+      params.category = filters.category;
+    }
+
+    const res = await client.get("/challenges", {
+      params,
+    });
+
     return res.data.challenges;
   },
+
   challenge: async (slug) => {
-    const res = await client.get(`/challenges/${slug}`);
-    return res.data.challenge;
+    const res = await client.get(
+      `/challenges/${slug}`
+    );
+
+    return res.data;
   },
+
   createChallenge: async (payload) => {
-    const res = await client.post("/challenges", payload);
+    const res = await client.post(
+      "/challenges",
+      payload
+    );
+
     return res.data.challenge;
   },
+
   updateChallenge: async (id, payload) => {
-    const res = await client.patch(`/challenges/${id}`, payload);
+    const res = await client.patch(
+      `/challenges/${id}`,
+      payload
+    );
+
     return res.data.challenge;
   },
+
   deleteChallenge: async (id) => {
     await client.delete(`/challenges/${id}`);
   },
 
-  // --- code run/submit ---
-  runCode: async ({ slug, language, source_code }) => {
-    const res = await client.post(`/challenges/${slug}/run`, {
-      language,
-      sourceCode: source_code,
-    });
+  // ===============================
+  // CODE RUN
+  // ===============================
+
+  runCode: async ({
+    slug,
+    language,
+    source_code,
+  }) => {
+    const res = await client.post(
+      `/challenges/${slug}/run`,
+      {
+        language,
+        sourceCode: source_code,
+      }
+    );
+
     return res.data;
   },
-  submitCode: async ({ slug, language, source_code }) => {
-    const res = await client.post(`/challenges/${slug}/submit`, {
-      language,
-      sourceCode: source_code,
-    });
+
+  // ===============================
+  // CODE SUBMIT
+  // ===============================
+
+  submitCode: async ({
+    slug,
+    language,
+    source_code,
+  }) => {
+    const res = await client.post(
+      `/challenges/${slug}/submit`,
+      {
+        language,
+        sourceCode: source_code,
+      }
+    );
+
     return res.data;
+  },
+
+  // ===============================
+  // VIOLATION MONITORING
+  // ===============================
+
+  // Start a monitoring session
+  startTestSession: async (challengeId) => {
+    const res = await client.post(
+      "/violations/sessions/start",
+      {
+        challengeId,
+      }
+    );
+
+    // IMPORTANT:
+    // Return the complete response because
+    // ChallengeDetail.jsx uses data.session
+    return res.data;
+  },
+
+  // Report violation
+  reportViolation: async ({
+    sessionId,
+    challengeId,
+    eventType,
+    applicationName,
+    windowTitle,
+    details,
+  }) => {
+    const res = await client.post(
+      "/violations/report",
+      {
+        sessionId,
+        challengeId,
+        eventType,
+        applicationName,
+        windowTitle,
+        details,
+      }
+    );
+
+    return res.data;
+  },
+
+  // Finish monitoring session
+  finishTestSession: async (sessionId) => {
+    const res = await client.post(
+      "/violations/sessions/finish",
+      {
+        sessionId,
+      }
+    );
+
+    return res.data.session;
+  },
+
+  // ===============================
+  // ADMIN VIOLATIONS
+  // ===============================
+
+  // Get recent violations
+  violations: async ({
+    limit = 100,
+    offset = 0,
+  } = {}) => {
+    const res = await client.get(
+      "/violations",
+      {
+        params: {
+          limit,
+          offset,
+        },
+      }
+    );
+
+    return res.data.violations;
+  },
+
+  // Get violations for one session
+  sessionViolations: async (sessionId) => {
+    const res = await client.get(
+      `/violations/session/${sessionId}`
+    );
+
+    return res.data.violations;
   },
 };
 
