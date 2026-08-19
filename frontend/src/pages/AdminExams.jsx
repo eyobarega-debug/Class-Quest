@@ -22,6 +22,11 @@ export default function AdminExams() {
   const [qType, setQType] = useState("mcq");
   const [qForm, setQForm] = useState(emptyQuestionForm("mcq"));
 
+  const [bulkJson, setBulkJson] = useState("");
+  const [tab, setTab] = useState("questions"); // "questions" | "attempts"
+  const [attempts, setAttempts] = useState([]);
+  const [attemptDetail, setAttemptDetail] = useState(null);
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -31,8 +36,12 @@ export default function AdminExams() {
   }, []);
 
   useEffect(() => {
-    if (selectedExamId) loadExamDetail(selectedExamId);
-  }, [selectedExamId]);
+    if (selectedExamId) {
+      loadExamDetail(selectedExamId);
+      setAttemptDetail(null);
+      if (tab === "attempts") loadAttempts(selectedExamId);
+    }
+  }, [selectedExamId, tab]);
 
   async function loadExams() {
     try {
@@ -180,6 +189,59 @@ export default function AdminExams() {
     }
   }
 
+  // Paste a whole exam's worth of questions as one JSON array, e.g.:
+  // [
+  //   { "type": "mcq", "question": "2 + 2 = ?", "options": ["3","4","5"], "correctOption": "4", "points": 5 },
+  //   { "type": "true_false", "question": "JS is compiled.", "correctAnswer": false, "points": 2 },
+  //   { "type": "short_answer", "question": "Capital of France?", "expectedAnswer": "Paris", "points": 3 },
+  //   { "type": "coding", "challengeId": 7, "points": 10 }
+  // ]
+  async function bulkImportQuestions(e) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+
+    let questions;
+    try {
+      questions = JSON.parse(bulkJson);
+    } catch {
+      setError("That's not valid JSON. Check for a missing comma or bracket.");
+      return;
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      setError("JSON must be a non-empty array of question objects.");
+      return;
+    }
+
+    try {
+      const created = await api.createExamQuestionsBulk(selectedExamId, questions);
+      setMessage(`${created.length} question(s) added.`);
+      setBulkJson("");
+      loadExamDetail(selectedExamId);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadAttempts(examId) {
+    setError("");
+    try {
+      setAttempts(await api.examAttempts(examId));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function openAttempt(attemptId) {
+    setError("");
+    try {
+      setAttemptDetail(await api.examAttemptDetail(attemptId));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   const selectedExam = exams.find((e) => e.id === selectedExamId);
 
   return (
@@ -301,10 +363,35 @@ export default function AdminExams() {
 
       {selectedExam && (
         <div className="mt-8 border border-gray-800 bg-[#0d1117] p-6">
-          <h2 className="text-white font-bold mb-4">
-            QUESTIONS — {selectedExam.title}
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-bold">
+              {selectedExam.title}
+            </h2>
 
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTab("questions")}
+                className={`text-xs font-mono px-3 py-1.5 border ${
+                  tab === "questions" ? "bg-cyan-400 text-black border-cyan-400" : "text-gray-400 border-gray-700"
+                }`}
+              >
+                QUESTIONS
+              </button>
+              <button
+                onClick={() => setTab("attempts")}
+                className={`text-xs font-mono px-3 py-1.5 border ${
+                  tab === "attempts" ? "bg-cyan-400 text-black border-cyan-400" : "text-gray-400 border-gray-700"
+                }`}
+              >
+                STUDENT ATTEMPTS
+              </button>
+            </div>
+          </div>
+
+          {tab === "attempts" ? (
+            <ExamAttemptsPanel attempts={attempts} attemptDetail={attemptDetail} onOpenAttempt={openAttempt} />
+          ) : (
+          <>
           {/* Change password */}
           <div className="mb-6 flex items-end gap-3">
             <div className="flex-1">
@@ -425,6 +512,22 @@ export default function AdminExams() {
             </button>
           </form>
 
+          {/* Bulk import (paste a whole exam's worth of questions as JSON) */}
+          <form onSubmit={bulkImportQuestions} className="border border-gray-800 p-4 mb-6 space-y-3">
+            <label className="block text-xs text-gray-500 font-mono mb-2">
+              BULK IMPORT (PASTE JSON ARRAY OF QUESTIONS)
+            </label>
+            <textarea
+              placeholder={`[\n  { "type": "mcq", "question": "2 + 2 = ?", "options": ["3","4","5"], "correctOption": "4", "points": 5 },\n  { "type": "true_false", "question": "JS is compiled.", "correctAnswer": false, "points": 2 },\n  { "type": "short_answer", "question": "Capital of France?", "expectedAnswer": "Paris", "points": 3 },\n  { "type": "coding", "challengeId": 7, "points": 10 }\n]`}
+              value={bulkJson}
+              onChange={(e) => setBulkJson(e.target.value)}
+              className="input min-h-40 font-mono text-xs"
+            />
+            <button className="w-full bg-gray-800 text-white font-bold py-2 hover:bg-gray-700">
+              IMPORT ALL
+            </button>
+          </form>
+
           {/* Existing questions */}
           <div className="space-y-2">
             {questions.map((q) => (
@@ -441,8 +544,122 @@ export default function AdminExams() {
             ))}
             {questions.length === 0 && <p className="text-gray-500 text-sm">No questions yet.</p>}
           </div>
+          </>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Admin view of every student's attempt on the selected exam: a list
+// with score "out of" the exam's total points (not XP), and a click-
+// through detail panel showing exactly what the student answered for
+// every question (including their coding source code).
+function ExamAttemptsPanel({ attempts, attemptDetail, onOpenAttempt }) {
+  return (
+    <div className="grid xl:grid-cols-2 gap-6">
+      <div className="border border-gray-800 overflow-x-auto h-fit">
+        <table className="w-full text-sm">
+          <thead className="border-b border-gray-800">
+            <tr className="text-left text-gray-500 font-mono text-xs">
+              <th className="p-4">STUDENT</th>
+              <th className="p-4">SCORE</th>
+              <th className="p-4">STATUS</th>
+              <th className="p-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {attempts.map((a) => (
+              <tr
+                key={a.id}
+                className={`border-b border-gray-800 ${attemptDetail?.attempt?.id === a.id ? "bg-cyan-400/5" : ""}`}
+              >
+                <td className="p-4 text-white">{a.student.name || a.student.username}</td>
+                <td className="p-4 text-cyan-400 font-mono">
+                  {a.totalScore ?? "—"}{a.maxScore != null ? ` / ${a.maxScore}` : ""}
+                </td>
+                <td className="p-4">
+                  <span
+                    className={`text-xs font-mono px-2 py-1 border ${
+                      a.status === "submitted"
+                        ? "text-green-400 border-green-400/30"
+                        : a.status === "expired"
+                        ? "text-yellow-400 border-yellow-400/30"
+                        : "text-gray-400 border-gray-500/30"
+                    }`}
+                  >
+                    {a.status.replace(/_/g, " ")}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <button onClick={() => onOpenAttempt(a.id)} className="text-xs text-cyan-400 hover:underline">
+                    VIEW
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {attempts.length === 0 && (
+              <tr><td colSpan={4} className="p-6 text-center text-gray-500">No attempts yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border border-gray-800 p-6 h-fit">
+        {!attemptDetail ? (
+          <p className="text-gray-500 text-sm">Select a student's attempt to see exactly what they answered.</p>
+        ) : (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-white font-bold">
+                {attemptDetail.attempt.student.name || attemptDetail.attempt.student.username}
+              </h3>
+              <p className="text-xs text-gray-500 font-mono mt-1">
+                {attemptDetail.attempt.totalScore ?? "—"} / {attemptDetail.attempt.maxScore ?? "—"} points ·{" "}
+                {attemptDetail.attempt.status.replace(/_/g, " ")}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {attemptDetail.questions.map((q) => (
+                <div key={q.questionId} className="border border-gray-800 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-cyan-400 font-mono uppercase">{q.type.replace("_", " ")}</span>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {q.pointsAwarded}/{q.points} pts
+                    </span>
+                  </div>
+                  <p className="text-white text-sm mb-2">{q.question}</p>
+
+                  {q.type === "coding" ? (
+                    <>
+                      <p className="text-xs text-gray-500 font-mono mb-1">
+                        {q.score} · {q.status.replace(/_/g, " ")} · {q.studentLanguage || "no submission"}
+                      </p>
+                      {q.studentSourceCode && (
+                        <pre className="text-xs text-gray-300 bg-[#07090d] border border-gray-800 p-3 overflow-x-auto whitespace-pre-wrap">
+                          {q.studentSourceCode}
+                        </pre>
+                      )}
+                    </>
+                  ) : (
+                    <p className={`text-xs font-mono ${q.isCorrect ? "text-green-400" : "text-red-400"}`}>
+                      Student answered: {q.studentAnswer ?? "(no answer)"}
+                      {q.isCorrect === false && (
+                        <span className="text-gray-500">
+                          {" "}
+                          — correct: {JSON.stringify(q.correctAnswer)}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

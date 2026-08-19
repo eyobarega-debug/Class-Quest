@@ -669,18 +669,86 @@ export default function ChallengeDetail() {
 
         <div className="p-5">
 
-          {!result ? (
+                   {!result ? (
             <p className="text-gray-600 font-mono text-sm">
               Run your code to see the result.
             </p>
+          ) : result.type === "error" ? (
+            <p className="text-red-400 font-mono text-sm">
+              {result.message}
+            </p>
           ) : (
-            <pre className="text-sm text-gray-300 whitespace-pre-wrap">
-              {JSON.stringify(
-                result,
-                null,
-                2
-              )}
-            </pre>
+            <div>
+              {/* Overall status */}
+              <div className="flex items-center gap-4 mb-4">
+                <span
+                  className={`text-sm font-mono font-bold px-3 py-1 border ${
+                    result.status === "accepted"
+                      ? "text-green-400 border-green-400/30 bg-green-400/5"
+                      : result.status
+                      ? "text-red-400 border-red-400/30 bg-red-400/5"
+                      : result.passedCount === result.totalCount && result.totalCount > 0
+                      ? "text-green-400 border-green-400/30 bg-green-400/5"
+                      : "text-yellow-400 border-yellow-400/30 bg-yellow-400/5"
+                  }`}
+                >
+                  {result.status
+                    ? result.status.replace(/_/g, " ").toUpperCase()
+                    : "RAN"}
+                </span>
+
+                <span className="text-sm text-gray-400 font-mono">
+                  {result.passedCount}/{result.totalCount} test cases passed
+                </span>
+
+                {result.xpEarned > 0 && (
+                  <span className="text-sm text-cyan-400 font-mono">
+                    +{result.xpEarned} XP
+                  </span>
+                )}
+              </div>
+
+              {/* Per-test-case breakdown */}
+              <div className="space-y-2">
+                {(result.results || []).map((r, i) => (
+                  <div
+                    key={i}
+                    className={`border p-3 text-sm ${
+                      r.passed
+                        ? "border-green-400/20 bg-green-400/5"
+                        : "border-red-400/20 bg-red-400/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`font-mono font-bold ${r.passed ? "text-green-400" : "text-red-400"}`}>
+                        {r.passed ? "✓ PASSED" : "✗ FAILED"} — Test {i + 1}
+                      </span>
+                      <span className="text-xs text-gray-500 font-mono">
+                        {r.status.replace(/_/g, " ")}
+                        {r.executionTimeMs != null ? ` · ${r.executionTimeMs}ms` : ""}
+                      </span>
+                    </div>
+
+                    {r.expected !== undefined && (
+                      <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-xs">
+                        <div>
+                          <p className="text-gray-500 mb-1">Expected</p>
+                          <pre className="text-gray-300 whitespace-pre-wrap break-all">{r.expected}</pre>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-1">Your output</p>
+                          <pre className="text-gray-300 whitespace-pre-wrap break-all">{r.actual}</pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {r.message && (
+                      <pre className="mt-2 text-xs text-red-300 whitespace-pre-wrap break-all">{r.message}</pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
         </div>

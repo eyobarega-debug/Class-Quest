@@ -34,6 +34,7 @@ client.interceptors.response.use(
   }
 );
 
+
 // ===============================
 // API
 // ===============================
@@ -234,12 +235,18 @@ export const api = {
   // VIOLATION MONITORING
   // ===============================
 
-  startTestSession: async (challengeId) => {
+    // Start a monitoring session. Accepts either a plain challengeId
+  // (existing standalone-challenge behavior, unchanged) or
+  // { challengeId, examAttemptId } for an exam session.
+  startTestSession: async (challengeIdOrOptions) => {
+    const body =
+      typeof challengeIdOrOptions === "object" && challengeIdOrOptions !== null
+        ? challengeIdOrOptions
+        : { challengeId: challengeIdOrOptions };
+
     const res = await client.post(
       "/violations/sessions/start",
-      {
-        challengeId,
-      }
+      body
     );
 
     return res.data;
@@ -248,6 +255,7 @@ export const api = {
   reportViolation: async ({
     sessionId,
     challengeId,
+    examAttemptId,
     eventType,
     applicationName,
     windowTitle,
@@ -258,6 +266,7 @@ export const api = {
       {
         sessionId,
         challengeId,
+        examAttemptId,
         eventType,
         applicationName,
         windowTitle,
@@ -418,6 +427,17 @@ export const api = {
     const res = await client.get(`/exams/attempts/${attemptId}/admin`);
     return res.data; // { attempt, questions }
   },
+
+  // Flat feed of every MCQ/True-False/Short-Answer answer across every
+// exam and every student — powers the "Submissions" dashboard.
+examAnswers: async ({ studentId, examId } = {}) => {
+  const params = {};
+  if (studentId) params.studentId = studentId;
+  if (examId) params.examId = examId;
+
+  const res = await client.get("/exams/answers", { params });
+  return res.data.answers;
+},
 };
 
 export default client;

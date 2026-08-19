@@ -39,7 +39,6 @@ async function reportViolation(windowInfo) {
 
   const windowTitle = windowInfo.title || "";
 
-  // Don't report the same window repeatedly
   const violationKey = `${applicationName}|${windowTitle}`;
 
   if (lastViolation === violationKey) {
@@ -50,7 +49,8 @@ async function reportViolation(windowInfo) {
 
   const data = JSON.stringify({
     sessionId: session.sessionId,
-    challengeId: session.challengeId,
+    challengeId: session.challengeId || undefined,
+    examAttemptId: session.examAttemptId || undefined,
     eventType: "APPLICATION_SWITCH",
     applicationName,
     windowTitle,
@@ -129,14 +129,6 @@ async function checkActiveWindow() {
       title
     );
 
-    /*
-      The student's current ClassQuest browser
-      window title is sent by the frontend.
-
-      If the active window doesn't match it,
-      we consider it a window switch.
-    */
-
     const titleMatches =
       allowedTitle &&
       title.includes(allowedTitle);
@@ -152,11 +144,6 @@ async function checkActiveWindow() {
     if (!titleMatches && !isBrowser) {
       await reportViolation(windowInfo);
     }
-
-    /*
-      If it's a browser but the title does not match
-      the ClassQuest page, it is also a violation.
-    */
 
     if (isBrowser && !titleMatches) {
       await reportViolation(windowInfo);
@@ -202,18 +189,19 @@ function startServer() {
 
           if (
             !data.sessionId ||
-            !data.challengeId ||
+            (!data.challengeId && !data.examAttemptId) ||
             !data.token
           ) {
             return sendJSON(res, 400, {
               message:
-                "sessionId, challengeId and token are required",
+                "sessionId, (challengeId or examAttemptId) and token are required",
             });
           }
 
           session = {
             sessionId: data.sessionId,
-            challengeId: data.challengeId,
+            challengeId: data.challengeId || null,
+            examAttemptId: data.examAttemptId || null,
           };
 
           authToken = data.token;
@@ -229,6 +217,7 @@ function startServer() {
           console.log("CLASSQUEST MONITOR STARTED");
           console.log("Session:", session.sessionId);
           console.log("Challenge:", session.challengeId);
+          console.log("Exam attempt:", session.examAttemptId);
           console.log("Allowed title:", allowedTitle);
           console.log("================================");
           console.log("");
@@ -276,13 +265,7 @@ function startServer() {
 }
 
 app.whenReady().then(() => {
-  /*
-    We intentionally don't create a visible
-    Electron window.
-  */
-
   startServer();
-
   setInterval(checkActiveWindow, 1000);
 });
 

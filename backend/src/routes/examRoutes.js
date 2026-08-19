@@ -17,6 +17,7 @@ import {
   finishExam,
   getExamAttemptsForAdmin,
   getExamAttemptDetailForAdmin,
+  getAllExamAnswers,
 } from "../controllers/exam.controller.js";
 import {
   validateCreateExam,
@@ -33,6 +34,12 @@ const router = express.Router();
 
 // --- Admin + student read access (student sees published only, no password) ---
 router.get("/", authenticate, asyncHandler(getExams));
+
+// Flat feed of every exam answer across every exam, for the
+// "Submissions" dashboard. Must be registered before "/:id" so
+// "answers" is never matched as an exam id.
+router.get("/answers", authenticate, requireAdmin, asyncHandler(getAllExamAnswers));
+
 router.get("/:id", authenticate, asyncHandler(getExamDetail));
 
 // --- Admin: exam CRUD ---

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { api } from "../services/api";
 
+const MONITOR_URL = "http://127.0.0.1:3847";
+
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
   const mm = Math.floor(s / 60).toString().padStart(2, "0");
@@ -19,19 +21,17 @@ export default function ExamTake() {
   const [questions, setQuestions] = useState(location.state?.questions || []);
 
   const [remainingSeconds, setRemainingSeconds] = useState(location.state?.attempt?.remainingSeconds ?? null);
-  const [answers, setAnswers] = useState({}); // questionId -> local answer text
-  const [saved, setSaved] = useState({}); // questionId -> true once saved
+  const [answers, setAnswers] = useState({});
+  const [saved, setSaved] = useState({});
   const [error, setError] = useState("");
-  const [finished, setFinished] = useState(null); // final { totalScore, maxScore } once submitted
+  const [finished, setFinished] = useState(null);
   const [loading, setLoading] = useState(!location.state);
+  const [monitorStatus, setMonitorStatus] = useState("checking");
 
   const pollRef = useRef(null);
   const finishingRef = useRef(false);
+  const monitoringStarted = useRef(false);
 
-  // If the page was refreshed (no router state), resume via /start.
-  // This never sends a stored password — if one is required and we
-  // don't have it, the backend rejects and we send the student back
-  // to the password screen, exactly as the spec requires.
   useEffect(() => {
     if (location.state) return;
 
@@ -47,6 +47,86 @@ export default function ExamTake() {
       .finally(() => setLoading(false));
   }, [id, location.state, navigate]);
 
+  // ===============================
+  // PROCTORING (same Electron monitor used for standalone coding
+  // challenges, now also covering the whole exam — not just the
+  // coding sub-question). Runs for the lifetime of this page.
+  // ===============================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkMonitor() {
+      try {
+        const response = await fetch(`${MONITOR_URL}/status`);
+        if (!response.ok) {
+          if (!cancelled) setMonitorStatus("offline");
+          return;
+        }
+        const data = await response.json();
+        if (cancelled) return;
+        setMonitorStatus(data.monitoring ? "monitoring" : "connected");
+      } catch {
+        if (!cancelled) setMonitorStatus("offline");
+      }
+    }
+
+    checkMonitor();
+    const interval = setInterval(checkMonitor, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!attempt?.id || !exam?.title) return;
+    if (monitorStatus !== "connected" && monitorStatus !== "monitoring") return;
+    if (monitoringStarted.current) return;
+
+    async function startMonitoring() {
+      try {
+        const token = localStorage.getItem("classquest_token");
+        if (!token) return;
+
+        const data = await api.startTestSession({ examAttemptId: attempt.id });
+        if (!data?.session?.id) throw new Error("Proctoring session was not created.");
+
+        const monitorResponse = await fetch(`${MONITOR_URL}/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: data.session.id,
+            examAttemptId: attempt.id,
+            token,
+            allowedTitle: exam.title || "ClassQuest",
+          }),
+        });
+
+        if (!monitorResponse.ok) {
+          const monitorData = await monitorResponse.json();
+          throw new Error(monitorData.message || "Failed to start Electron monitor.");
+        }
+
+        monitoringStarted.current = true;
+        setMonitorStatus("monitoring");
+      } catch (err) {
+        console.error("FAILED TO START EXAM MONITORING:", err);
+        setMonitorStatus("offline");
+      }
+    }
+
+    startMonitoring();
+  }, [attempt, exam, monitorStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (!monitoringStarted.current) return;
+      fetch(`${MONITOR_URL}/stop`, { method: "POST" }).catch(() => {});
+      monitoringStarted.current = false;
+    };
+  }, []);
+
   const finishExam = useCallback(async () => {
     if (finishingRef.current || !attempt) return;
     finishingRef.current = true;
@@ -55,12 +135,10 @@ export default function ExamTake() {
       setFinished(result);
     } catch (err) {
       setError(err.message);
+      finishingRef.current = false;
     }
   }, [attempt]);
 
-  // Backend is the source of truth: poll every 5s to re-sync the
-  // countdown and detect server-side expiry, regardless of what the
-  // local tab's clock thinks.
   useEffect(() => {
     if (!attempt || finished) return;
 
@@ -81,7 +159,6 @@ export default function ExamTake() {
     return () => clearInterval(pollRef.current);
   }, [attempt, finished, finishExam]);
 
-  // Smooth local countdown between polls.
   useEffect(() => {
     if (remainingSeconds === null || finished) return;
     if (remainingSeconds <= 0) {
@@ -119,9 +196,9 @@ export default function ExamTake() {
             ? "Your exam time ran out and was automatically submitted."
             : "Your answers have been submitted."}
         </p>
-        <div className="text-3xl font-bold text-cyan-400 mb-6">
-          {finished.totalScore} / {finished.maxScore}
-        </div>
+        <p className="text-sm text-gray-500 mb-6">
+          Your instructor will review your results.
+        </p>
         <Link to="/exams" className="text-cyan-400 underline text-sm">
           Back to exams
         </Link>
@@ -145,6 +222,18 @@ export default function ExamTake() {
         <div className={`font-mono text-lg px-4 py-2 border ${lowTime ? "border-red-500 text-red-400 animate-pulse" : "border-cyan-400/30 text-cyan-400"}`}>
           {formatTime(remainingSeconds ?? 0)}
         </div>
+        <span
+          title="Proctoring status"
+          className={`text-xs font-mono px-2 py-1 border ${
+            monitorStatus === "monitoring"
+              ? "border-green-500/30 text-green-400"
+              : monitorStatus === "connected"
+              ? "border-yellow-500/30 text-yellow-400"
+              : "border-gray-700 text-gray-500"
+          }`}
+        >
+          MONITOR: {monitorStatus.toUpperCase()}
+        </span>
         <button
           onClick={finishExam}
           className="bg-cyan-400 text-black font-bold px-5 py-2 hover:bg-cyan-300"

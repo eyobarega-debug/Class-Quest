@@ -17,15 +17,19 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
+import Exams from "./pages/Exams";
+import ExamPassword from "./pages/ExamPassword";
+import ExamTake from "./pages/ExamTake";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStudents from "./pages/AdminStudents";
 import AdminChallenges from "./pages/AdminChallenges";
 import AdminExams from "./pages/AdminExams";
 import AdminSubmissions from "./pages/AdminSubmissions";
+import AdminViolations from "./pages/AdminViolations";
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-[#07090d]">
+    <div className="min-h-screen bg-[#0a0806]">
       <Navbar />
 
       <div className="flex">
@@ -38,11 +42,15 @@ function Layout() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/challenges/:slug" element={<ChallengeDetail />} />
+            <Route path="/exams" element={<Exams />} />
+            <Route path="/exams/:id" element={<ExamPassword />} />
+            <Route path="/exams/:id/take" element={<ExamTake />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/students" element={<AdminStudents />} />
             <Route path="/admin/challenges" element={<AdminChallenges />} />
             <Route path="/admin/exams" element={<AdminExams />} />
             <Route path="/admin/submissions" element={<AdminSubmissions />} />
+            <Route path="/admin/violations" element={<AdminViolations />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

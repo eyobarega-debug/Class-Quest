@@ -23,9 +23,9 @@ import {
   bulkCreateExamQuestions,
   listAttemptsForExam,
   getAttemptDetailForAdmin,
+  listExamAnswersForAdmin,   // <-- add this line
 } from "../models/exam.model.js";
 import { getChallengeById } from "../models/challenge.model.js";
-
 // -----------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------
@@ -529,4 +529,39 @@ export async function getExamAttemptDetailForAdmin(req, res) {
   if (!detail) return res.status(404).json({ message: "Attempt not found" });
 
   res.json(detail);
+}
+
+// Flat feed of every MCQ / True-False / Short-Answer answer across
+// every exam and every student — this is what powers the
+// "Submissions" dashboard so exam answers show up there too, not
+// just coding submissions. Optional ?studentId=/?examId= filters.
+export async function getAllExamAnswers(req, res) {
+  const { studentId, examId } = req.query;
+
+  const answers = await listExamAnswersForAdmin({
+    userId: studentId ? Number(studentId) : undefined,
+    examId: examId ? Number(examId) : undefined,
+  });
+
+  res.json({
+    answers: answers.map((a) => ({
+      id: a.id,
+      student: { id: a.user_id, name: a.full_name, username: a.username },
+      exam: { id: a.exam_id, title: a.exam_title },
+      attemptId: a.attempt_id,
+      attemptStatus: a.attempt_status,
+      questionId: a.exam_question_id,
+      questionType: a.question_type,
+      question: a.question,
+      studentAnswer: a.answer,
+      correctAnswer:
+        a.question_type === "mcq" ? a.data?.correctOption
+        : a.question_type === "true_false" ? String(a.data?.correctAnswer)
+        : a.question_type === "short_answer" ? a.data?.expectedAnswer
+        : null,
+      isCorrect: a.is_correct,
+      score: `${a.points_awarded}/${a.question_points}`, // out of the question, not XP
+      answeredAt: a.answered_at,
+    })),
+  });
 }

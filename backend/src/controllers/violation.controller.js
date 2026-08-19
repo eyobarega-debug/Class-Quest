@@ -8,14 +8,15 @@ import {
 } from "../models/violation.model.js";
 
 
-// STUDENT: Start a monitoring session
+// STUDENT: Start a monitoring session, for either a standalone
+// coding challenge or an exam (identified by the student's exam_attempt_id).
 export async function startTestSession(req, res) {
   try {
-    const { challengeId } = req.body;
+    const { challengeId, examAttemptId } = req.body;
 
-    if (!challengeId) {
+    if (!challengeId && !examAttemptId) {
       return res.status(400).json({
-        message: "challengeId is required",
+        message: "challengeId or examAttemptId is required",
       });
     }
 
@@ -23,6 +24,7 @@ export async function startTestSession(req, res) {
     const existing = await getActiveTestSession({
       userId: req.user.id,
       challengeId,
+      examAttemptId,
     });
 
     if (existing) {
@@ -34,6 +36,7 @@ export async function startTestSession(req, res) {
     const session = await createTestSession({
       userId: req.user.id,
       challengeId,
+      examAttemptId,
     });
 
     res.status(201).json({
@@ -49,22 +52,24 @@ export async function startTestSession(req, res) {
 }
 
 
-// STUDENT: Report a violation
+// STUDENT: Report a violation, for either a standalone coding
+// challenge session or an exam session (via examAttemptId).
 export async function reportViolation(req, res) {
   try {
     const {
       sessionId,
       challengeId,
+      examAttemptId,
       eventType,
       applicationName,
       windowTitle,
       details,
     } = req.body;
 
-    if (!sessionId || !challengeId || !eventType) {
+    if (!sessionId || (!challengeId && !examAttemptId) || !eventType) {
       return res.status(400).json({
         message:
-          "sessionId, challengeId and eventType are required",
+          "sessionId, (challengeId or examAttemptId) and eventType are required",
       });
     }
 
@@ -72,6 +77,7 @@ export async function reportViolation(req, res) {
     const session = await getActiveTestSession({
       userId: req.user.id,
       challengeId,
+      examAttemptId,
     });
 
     if (!session) {
@@ -90,6 +96,7 @@ export async function reportViolation(req, res) {
       sessionId,
       userId: req.user.id,
       challengeId,
+      examAttemptId,
       eventType,
       applicationName,
       windowTitle,

@@ -14,41 +14,49 @@ const EVENT_SEVERITIES = {
 };
 
 
-// Create a test monitoring session
+// Create a test monitoring session. Exactly one of challengeId /
+// examAttemptId is expected (a standalone coding challenge, or an
+// exam — including the coding sub-question inside an exam, which
+// still passes challengeId here, unchanged from before).
 export async function createTestSession({
   userId,
   challengeId,
+  examAttemptId,
 }) {
   const result = await pool.query(
     `
     INSERT INTO test_sessions
-      (user_id, challenge_id)
-    VALUES ($1, $2)
+      (user_id, challenge_id, exam_attempt_id)
+    VALUES ($1, $2, $3)
     RETURNING *
     `,
-    [userId, challengeId]
+    [userId, challengeId || null, examAttemptId || null]
   );
 
   return result.rows[0];
 }
 
 
-// Get active session for a student
+// Get active session for a student, for either a challenge or an exam attempt.
 export async function getActiveTestSession({
   userId,
   challengeId,
+  examAttemptId,
 }) {
   const result = await pool.query(
     `
     SELECT *
     FROM test_sessions
     WHERE user_id = $1
-      AND challenge_id = $2
       AND status = 'active'
+      AND (
+        ($2::INTEGER IS NOT NULL AND challenge_id = $2)
+        OR ($3::BIGINT IS NOT NULL AND exam_attempt_id = $3)
+      )
     ORDER BY started_at DESC
     LIMIT 1
     `,
-    [userId, challengeId]
+    [userId, challengeId || null, examAttemptId || null]
   );
 
   return result.rows[0] || null;
@@ -60,6 +68,7 @@ export async function createViolation({
   sessionId,
   userId,
   challengeId,
+  examAttemptId,
   eventType,
   applicationName,
   windowTitle,
@@ -80,6 +89,7 @@ export async function createViolation({
           session_id,
           user_id,
           challenge_id,
+          exam_attempt_id,
           event_type,
           severity,
           application_name,
@@ -87,13 +97,14 @@ export async function createViolation({
           details
         )
       VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8)
+        ($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
       `,
       [
         sessionId,
         userId,
-        challengeId,
+        challengeId || null,
+        examAttemptId || null,
         eventType,
         severity,
         applicationName || null,
@@ -145,7 +156,9 @@ export async function endTestSession(
 }
 
 
-// Get violations for one session
+// Get violations for one session. challenge_title falls back to the
+// exam's title (prefixed) when this violation happened during an
+// exam rather than a standalone challenge.
 export async function getSessionViolations(
   sessionId
 ) {
@@ -154,12 +167,16 @@ export async function getSessionViolations(
     SELECT
       tv.*,
       u.username,
-      c.title AS challenge_title
+      COALESCE(c.title, 'Exam: ' || e.title) AS challenge_title
     FROM test_violations tv
     JOIN users u
       ON u.id = tv.user_id
-    JOIN challenges c
+    LEFT JOIN challenges c
       ON c.id = tv.challenge_id
+    LEFT JOIN exam_attempts ea
+      ON ea.id = tv.exam_attempt_id
+    LEFT JOIN exams e
+      ON e.id = ea.exam_id
     WHERE tv.session_id = $1
     ORDER BY tv.created_at ASC
     `,
@@ -170,7 +187,7 @@ export async function getSessionViolations(
 }
 
 
-// Admin: get recent violations
+// Admin: get recent violations (across both challenge and exam sessions)
 export async function getRecentViolations({
   limit = 100,
   offset = 0,
@@ -180,12 +197,16 @@ export async function getRecentViolations({
     SELECT
       tv.*,
       u.username,
-      c.title AS challenge_title
+      COALESCE(c.title, 'Exam: ' || e.title) AS challenge_title
     FROM test_violations tv
     JOIN users u
       ON u.id = tv.user_id
-    JOIN challenges c
+    LEFT JOIN challenges c
       ON c.id = tv.challenge_id
+    LEFT JOIN exam_attempts ea
+      ON ea.id = tv.exam_attempt_id
+    LEFT JOIN exams e
+      ON e.id = ea.exam_id
     ORDER BY tv.created_at DESC
     LIMIT $1 OFFSET $2
     `,

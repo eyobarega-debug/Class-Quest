@@ -66,7 +66,7 @@ export async function updateExam(id, fields) {
 
   for (const [key, value] of Object.entries(fields)) {
     const column = UPDATE_FIELD_MAP[key];
-    if (!column) continue;
+    if (!column || value === undefined) continue;   // ← added `|| value === undefined`
     params.push(value);
     sets.push(`${column} = $${params.length}`);
   }
@@ -251,9 +251,9 @@ export async function updateExamQuestion(id, fields) {
     challengeId: "challenge_id",
   };
 
-  for (const [key, value] of Object.entries(fields)) {
+   for (const [key, value] of Object.entries(fields)) {
     const column = map[key];
-    if (!column) continue;
+    if (!column || value === undefined) continue;   // ← added `|| value === undefined`
     params.push(value);
     sets.push(`${column} = $${params.length}`);
   }
@@ -312,14 +312,62 @@ export async function markAttemptStatus(id, status, { totalScore, maxScore } = {
   const result = await pool.query(
     `UPDATE exam_attempts
      SET status = $1,
-         submitted_at = CASE WHEN $1 IN ('submitted', 'expired') THEN NOW() ELSE submitted_at END,
+         submitted_at = CASE WHEN $5 IN ('submitted', 'expired') THEN NOW() ELSE submitted_at END,
          total_score = COALESCE($2, total_score),
          max_score = COALESCE($3, max_score)
      WHERE id = $4
      RETURNING *`,
-    [status, totalScore ?? null, maxScore ?? null, id]
+    [status, totalScore ?? null, maxScore ?? null, id, status]
   );
   return result.rows[0] || null;
+}
+
+// ---------------------------------------------------------------------
+// Admin: flat feed of every exam answer across every exam (for the
+// "Submissions" dashboard, so MCQ/True-False/Short-Answer answers
+// show up there too, not just coding submissions). Newest first.
+// ---------------------------------------------------------------------
+export async function listExamAnswersForAdmin({ userId, examId, limit = 200, offset = 0 } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (userId) {
+    params.push(userId);
+    conditions.push(`a.user_id = $${params.length}`);
+  }
+
+  if (examId) {
+    params.push(examId);
+    conditions.push(`ex.id = $${params.length}`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  params.push(limit);
+  params.push(offset);
+
+  const result = await pool.query(
+    `
+    SELECT
+      ea.id, ea.answer, ea.is_correct, ea.points_awarded, ea.answered_at,
+      eq.id AS exam_question_id, eq.type AS question_type, eq.question, eq.points AS question_points, eq.data,
+      ex.id AS exam_id, ex.title AS exam_title,
+      a.id AS attempt_id, a.status AS attempt_status,
+      u.id AS user_id, u.username, u.full_name
+    FROM exam_answers ea
+    JOIN exam_questions eq ON eq.id = ea.exam_question_id
+    JOIN exams ex ON ex.id = eq.exam_id
+    JOIN exam_attempts a ON a.id = ea.exam_attempt_id
+    JOIN users u ON u.id = a.user_id
+    ${where}
+    ORDER BY ea.answered_at DESC
+    LIMIT $${params.length - 1}
+    OFFSET $${params.length}
+    `,
+    params
+  );
+
+  return result.rows;
 }
 
 // ---------------------------------------------------------------------
