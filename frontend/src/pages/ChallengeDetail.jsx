@@ -4,7 +4,7 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 
 import { api } from "../services/api";
@@ -21,12 +21,17 @@ const languageConfig = {
 const MONITOR_URL = "http://127.0.0.1:3847";
 
 export default function ChallengeDetail() {
-  const { slug } = useParams();
+   const { slug } = useParams();
+
+  // Optional: present only when this coding question is being
+  // answered as part of a timed exam (linked from ExamTake.jsx).
+  // Does not affect the page at all when absent.
+  const [searchParams] = useSearchParams();
+  const examAttemptId = searchParams.get("examAttemptId");
 
   // ===============================
   // STATE
   // ===============================
-
   const [challenge, setChallenge] = useState(null);
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("");
@@ -389,6 +394,8 @@ export default function ChallengeDetail() {
           slug: challenge.slug,
           language,
           source_code: code,
+          examAttemptId: examAttemptId || undefined,
+
         });
 
       setResult(response);
@@ -441,6 +448,16 @@ export default function ChallengeDetail() {
 
   return (
     <div>
+
+      {examAttemptId && (
+        <div className="mb-4 border border-cyan-400/30 bg-cyan-400/5 text-cyan-400 text-sm p-3 flex items-center justify-between">
+          <span>Answering this coding question as part of your exam.</span>
+          <Link to={`/exams/${searchParams.get("examId") || ""}/take`} className="underline">
+            ← Back to exam
+          </Link>
+        </div>
+      )}
+
 
       {/* ===============================
           HEADER

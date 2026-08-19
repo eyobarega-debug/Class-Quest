@@ -1,22 +1,40 @@
+/* ==========================================================================
+   INTERACTIVE COUNTER BUTTON
+   ========================================================================== */
 .counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: var(--border-focus, #22d3ee);
+  background: var(--bg-surface, #121723);
+  border: 1px solid var(--border-color, #1e293b);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
   &:hover {
-    border-color: var(--accent-border);
+    border-color: var(--border-focus, #22d3ee);
+    background: var(--bg-hover, #1a2030);
+    box-shadow: 0 0 12px var(--accent-glow, rgba(34, 211, 238, 0.2));
+    transform: translateY(-1px);
   }
+
+  &:active {
+    transform: translateY(0);
+  }
+
   &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: none;
+    border-color: var(--border-focus, #22d3ee);
+    box-shadow: 0 0 0 3px var(--accent-glow, rgba(34, 211, 238, 0.25));
   }
 }
 
+/* ==========================================================================
+   3D HERO LOGO SECTION
+   ========================================================================== */
 .hero {
   position: relative;
 
@@ -25,6 +43,7 @@
   .vite {
     inset-inline: 0;
     margin: 0 auto;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
   }
 
   .base {
@@ -42,8 +61,7 @@
     z-index: 1;
     top: 34px;
     height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg) scale(1.4);
   }
 
   .vite {
@@ -51,11 +69,13 @@
     top: 107px;
     height: 26px;
     width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg) scale(0.8);
   }
 }
 
+/* ==========================================================================
+   CENTER HERO CONTAINER
+   ========================================================================== */
 #center {
   display: flex;
   flex-direction: column;
@@ -70,14 +90,24 @@
   }
 }
 
+/* ==========================================================================
+   NEXT STEPS & DOCUMENTATION CONTAINER
+   ========================================================================== */
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color, #1e293b);
   text-align: left;
+  background: var(--bg-main, #0a0d14);
 
   & > div {
     flex: 1 1 0;
     padding: 32px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background: rgba(18, 23, 35, 0.4);
+    }
+
     @media (max-width: 1024px) {
       padding: 24px 20px;
     }
@@ -87,6 +117,7 @@
     margin-bottom: 16px;
     width: 22px;
     height: 22px;
+    color: var(--border-focus, #22d3ee);
   }
 
   @media (max-width: 1024px) {
@@ -96,19 +127,22 @@
 }
 
 #docs {
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-color, #1e293b);
 
   @media (max-width: 1024px) {
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-color, #1e293b);
   }
 }
 
+/* ==========================================================================
+   SOCIAL & ACTION LINK BUTTONS
+   ========================================================================== */
 #next-steps ul {
   list-style: none;
   padding: 0;
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin: 32px 0 0;
 
   .logo {
@@ -116,20 +150,27 @@
   }
 
   a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
+    color: var(--text-main, #f8fafc);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    background: var(--bg-surface, #121723);
+    border: 1px solid var(--border-color, #1e293b);
     display: flex;
-    padding: 6px 12px;
+    padding: 8px 14px;
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    transition: box-shadow 0.3s;
+    transition: all 0.2s ease;
 
     &:hover {
-      box-shadow: var(--shadow);
+      background: var(--bg-hover, #1a2030);
+      border-color: var(--border-focus, #22d3ee);
+      color: #ffffff;
+      box-shadow: 0 0 10px var(--accent-glow, rgba(34, 211, 238, 0.15));
+      transform: translateY(-1px);
     }
+
     .button-icon {
       height: 18px;
       width: 18px;
@@ -142,7 +183,7 @@
     justify-content: center;
 
     li {
-      flex: 1 1 calc(50% - 8px);
+      flex: 1 1 calc(50% - 10px);
     }
 
     a {
@@ -153,9 +194,13 @@
   }
 }
 
+/* ==========================================================================
+   FOOTER SPACER & ACCENT TICKS
+   ========================================================================== */
 #spacer {
   height: 88px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color, #1e293b);
+
   @media (max-width: 1024px) {
     height: 48px;
   }
@@ -175,10 +220,10 @@
 
   &::before {
     left: 0;
-    border-left-color: var(--border);
+    border-left-color: var(--border-color, #1e293b);
   }
   &::after {
     right: 0;
-    border-right-color: var(--border);
+    border-right-color: var(--border-color, #1e293b);
   }
 }

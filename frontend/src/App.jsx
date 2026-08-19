@@ -20,6 +20,8 @@ import ChallengeDetail from "./pages/ChallengeDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStudents from "./pages/AdminStudents";
 import AdminChallenges from "./pages/AdminChallenges";
+import AdminExams from "./pages/AdminExams";
+import AdminSubmissions from "./pages/AdminSubmissions";
 
 function Layout() {
   return (
@@ -39,6 +41,8 @@ function Layout() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/students" element={<AdminStudents />} />
             <Route path="/admin/challenges" element={<AdminChallenges />} />
+            <Route path="/admin/exams" element={<AdminExams />} />
+            <Route path="/admin/submissions" element={<AdminSubmissions />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

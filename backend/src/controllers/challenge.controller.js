@@ -16,6 +16,8 @@ import {
   createChallenge,
   createSubmission,
   hasAcceptedSubmission,
+  listSubmissionsForAdmin,
+  getSubmissionByIdForAdmin,
 } from "../models/challenge.model.js";
 import { addXp, findUserById, formatUser } from "../models/user.model.js";
 
@@ -31,6 +33,64 @@ export async function getChallenges(req, res) {
   const { difficulty, category, language, search } = req.query;
   const challenges = await listChallenges({ difficulty, category, language, search });
   res.json({ challenges });
+}
+
+// ADMIN: list every student's coding submissions, with the exact
+// score "out of" the challenge's total test cases (not XP), plus
+// their source code so the admin can see what the student actually
+// submitted. Optional ?studentId= / ?challengeId= filters.
+export async function getAllSubmissions(req, res) {
+  const { studentId, challengeId } = req.query;
+
+  const submissions = await listSubmissionsForAdmin({
+    userId: studentId ? Number(studentId) : undefined,
+    challengeId: challengeId ? Number(challengeId) : undefined,
+  });
+
+  res.json({
+    submissions: submissions.map((s) => ({
+      id: s.id,
+      student: { id: s.user_id, name: s.full_name, username: s.username },
+      challenge: { id: s.challenge_id, title: s.challenge_title, slug: s.challenge_slug },
+      language: s.language,
+      sourceCode: s.source_code,
+      status: s.status,
+      score: `${s.passed_tests}/${s.total_tests}`, // out of the question, not XP
+      passedTests: s.passed_tests,
+      totalTests: s.total_tests,
+      executionTimeMs: s.execution_time_ms,
+      xpEarned: s.xp_earned,
+      examAttemptId: s.exam_attempt_id,
+      submittedAt: s.created_at,
+    })),
+  });
+}
+
+// ADMIN: full detail (source code included) for a single submission.
+export async function getSubmissionDetail(req, res) {
+  const id = Number(req.params.id);
+  const submission = await getSubmissionByIdForAdmin(id);
+
+  if (!submission) {
+    return res.status(404).json({ message: "Submission not found" });
+  }
+
+  res.json({
+    submission: {
+      id: submission.id,
+      student: { id: submission.user_id, name: submission.full_name, username: submission.username },
+      challenge: { id: submission.challenge_id, title: submission.challenge_title, slug: submission.challenge_slug },
+      language: submission.language,
+      sourceCode: submission.source_code,
+      status: submission.status,
+      score: `${submission.passed_tests}/${submission.total_tests}`,
+      passedTests: submission.passed_tests,
+      totalTests: submission.total_tests,
+      executionTimeMs: submission.execution_time_ms,
+      xpEarned: submission.xp_earned,
+      submittedAt: submission.created_at,
+    },
+  });
 }
 
 export async function getChallengeDetail(req, res) {
@@ -144,6 +204,36 @@ function runJavaScript(sourceCode, input, timeoutMs) {
   return output.trim();
 }
 
+// Python execution (mirrors runCpp: write to a temp file, run it,
+// capture stdout). Requires python3 to be on PATH of the server.
+async function runPython(sourceCode, input, timeoutMs) {
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "classquest-")
+  );
+
+  const sourcePath = path.join(tempDir, "main.py");
+
+  try {
+    await writeFile(sourcePath, sourceCode, "utf8");
+
+    const { stdout } = await execFileAsync(
+      "python3",
+      [sourcePath],
+      {
+        input,
+        timeout: timeoutMs,
+      }
+    );
+
+    return stdout.trim();
+  } finally {
+    await unlink(sourcePath).catch(() => {});
+    await fs.rm(tempDir, {
+      recursive: true,
+      force: true,
+    }).catch(() => {});
+  }
+}
 
 // C++ execution
 async function runCpp(sourceCode, input, timeoutMs) {
@@ -191,7 +281,6 @@ async function runCpp(sourceCode, input, timeoutMs) {
   }
 }
 
-
 // Run code against test cases
 async function executeAgainstTests(
   language,
@@ -224,6 +313,15 @@ async function executeAgainstTests(
       // C++
       else if (language === "cpp" || language === "c++") {
         actual = await runCpp(
+          sourceCode,
+          test.input,
+          timeLimitMs
+        );
+      }
+
+      // Python
+      else if (language === "python" || language === "python3") {
+        actual = await runPython(
           sourceCode,
           test.input,
           timeLimitMs
@@ -285,7 +383,6 @@ async function executeAgainstTests(
   return results;
 }
 
-
 // RUN CODE
 export async function runCode(req, res) {
   try {
@@ -327,12 +424,11 @@ export async function runCode(req, res) {
   }
 }
 
-
 // SUBMIT CODE
 export async function submitCode(req, res) {
   try {
     const { slug } = req.params;
-    const { language, sourceCode } = req.body;
+    const { language, sourceCode, examAttemptId } = req.body;
 
     console.log("SUBMIT REQUEST:", {
       slug,
@@ -346,6 +442,29 @@ export async function submitCode(req, res) {
       return res.status(404).json({
         message: "Challenge not found",
       });
+    }
+
+    // Optional: this submission is answering a coding question inside
+    // a timed exam. Validated here (not trusted blindly) but does not
+    // otherwise change the run/submit logic below in any way.
+    let validatedExamAttemptId = null;
+    if (examAttemptId) {
+      const { getAttemptById: getExamAttemptById, getExamById: getExamByIdForAttempt } = await import("../models/exam.model.js");
+      const attempt = await getExamAttemptById(Number(examAttemptId));
+
+      if (!attempt || attempt.user_id !== req.user.id) {
+        return res.status(404).json({ message: "Exam attempt not found" });
+      }
+
+      const exam = await getExamByIdForAttempt(attempt.exam_id);
+      const elapsedMs = Date.now() - new Date(attempt.started_at).getTime();
+      const expired = elapsedMs > exam.duration_minutes * 60 * 1000;
+
+      if (attempt.status !== "in_progress" || expired) {
+        return res.status(403).json({ message: "This exam attempt is no longer active. Time may have expired." });
+      }
+
+      validatedExamAttemptId = attempt.id;
     }
 
     const allTests = await getAllTestCases(
@@ -443,6 +562,7 @@ export async function submitCode(req, res) {
       ),
 
       xpEarned,
+      examAttemptId: validatedExamAttemptId,
     });
 
 

@@ -1,26 +1,15 @@
-// ClassQuest XP progress bar
-// Purple represents XP, levels, achievements,
-// and other gamification elements.
-
 export default function XPBar({
   percent,
   xpIntoLevel,
   xpForNextLevel,
   size = "md",
 }) {
-  const clamped = Math.max(
-    0,
-    Math.min(100, percent)
-  );
-
-  const height =
-    size === "lg" ? "h-4" : "h-2.5";
+  const clamped = Math.max(0, Math.min(100, percent));
+  const height = size === "lg" ? "h-3.5" : "h-2.5";
 
   return (
     <div className="w-full">
-
-      {/* XP BAR */}
-
+      {/* XP BAR TRACK */}
       <div
         className={`
           w-full
@@ -28,8 +17,9 @@ export default function XPBar({
           rounded-full
           overflow-hidden
           border
-          border-[#E2E8F0]
-          bg-[#F1F5F9]
+          border-[#1E293B]
+          bg-[#0E121C]
+          p-[1px]
         `}
       >
         <div
@@ -39,11 +29,10 @@ export default function XPBar({
             transition-all
             duration-700
             ease-out
-            bg-[#8B5CF6]
+            bg-gradient-to-r from-[#A855F7] to-[#06B6D4]
+            shadow-[0_0_12px_rgba(168,85,247,0.4)]
           `}
-          style={{
-            width: `${clamped}%`,
-          }}
+          style={{ width: `${clamped}%` }}
           role="progressbar"
           aria-valuenow={clamped}
           aria-valuemin={0}
@@ -52,15 +41,14 @@ export default function XPBar({
       </div>
 
       {/* XP INFORMATION */}
-
       {typeof xpIntoLevel === "number" &&
         typeof xpForNextLevel === "number" && (
-          <div className="mt-1.5 flex justify-between font-mono text-xs text-[#64748B]">
+          <div className="mt-2 flex justify-between font-mono text-xs text-[#94A3B8]">
             <span>
               {xpIntoLevel} / {xpForNextLevel} XP
             </span>
 
-            <span className="text-[#8B5CF6] font-semibold">
+            <span className="text-[#A855F7] font-semibold">
               {clamped}%
             </span>
           </div>

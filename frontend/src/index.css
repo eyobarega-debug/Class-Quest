@@ -1,26 +1,60 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
-:root {
-  font-family: "Space Grotesk", sans-serif;
-  color: #f8fafc;
-  background: #07090d;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+
+/* Tailwind CSS v4 Theme Token Definitions */
+@theme {
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* App Backgrounds */
+  --color-void: #090d16;             /* Deep Obsidian Main Background */
+  --color-surface: #111726;          /* Card & Sidebar Panel Background */
+  --color-surface-raised: #182032;   /* Inputs, Active Pills & Hover States */
+
+  /* Borders & Dividers */
+  --color-border-subtle: #1e293b;    /* Dark Slate Border */
+  --color-border-focus: #a855f7;     /* Purple Radiant Focus Border */
+
+  /* Text Typography */
+  --color-text-primary: #f8fafc;     /* Crisp High-Contrast White Text */
+  --color-text-muted: #94a3b8;       /* Subtle Secondary Slate Text */
+
+  /* ClassQuest Brand Accents */
+  --color-xp: #a855f7;               /* Gamification Electric Purple */
+  --color-rating: #06b6d4;           /* Cyan Accent for Ratings & Missions */
+  --color-danger: #f87171;           /* Logout & Error Red */
+  --color-success: #34d399;          /* Easy Challenge Green */
+  --color-warn: #fbbf24;             /* Medium Challenge Gold */
 }
 
+/* Fallback CSS Custom Variables */
+:root {
+  --color-xp: #a855f7;
+  --color-rating: #06b6d4;
+  --color-void: #090d16;
+  --color-surface: #111726;
+  --color-surface-raised: #182032;
+  --color-border-subtle: #1e293b;
+  --color-text-primary: #f8fafc;
+  --color-text-muted: #94a3b8;
+  --color-danger: #f87171;
+  --color-success: #34d399;
+  --color-warn: #fbbf24;
+}
+
+/* Base Styles */
 * {
   box-sizing: border-box;
 }
 
-html {
-  background: #07090d;
-}
-
+html,
 body {
   margin: 0;
-  min-width: 320px;
+  padding: 0;
+  background-color: var(--color-void);
+  color: var(--color-text-primary);
+  font-family: "Space Grotesk", sans-serif;
   min-height: 100vh;
-  background: #07090d;
 }
 
 button,
@@ -30,19 +64,24 @@ textarea {
   font-family: inherit;
 }
 
-.font-mono {
-  font-family: "JetBrains Mono", monospace;
+/* Universal Focus Ring Helper */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-xp);
+  outline-offset: 2px;
 }
 
-.input {
-  width: 100%;
-  background: #080b10;
-  border: 1px solid #1f2937;
-  color: white;
-  padding: 12px 14px;
-  outline: none;
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-.input:focus {
-  border-color: rgb(34 211 238);
+::-webkit-scrollbar-track {
+  background: var(--color-void);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }

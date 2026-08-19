@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Swords, Trophy, User, Shield, Users, Lock,
+  LayoutDashboard, Swords, Trophy, User, Shield, Users, Lock, Timer,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 const studentLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/arena', label: 'Coding Arena', icon: Swords, soon: true },
+  { to: '/exams', label: 'Exams', icon: Timer },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy, soon: true },
   { to: '/profile', label: 'Profile', icon: User },
 ];
@@ -20,6 +21,7 @@ const adminLinks = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/students', label: 'Students', icon: Users },
   { to: '/admin/challenges', label: 'Challenges', icon: Swords, soon: true },
+  { to: '/admin/exams', label: 'Exams', icon: Timer },
 ];
 
 export default function Sidebar() {

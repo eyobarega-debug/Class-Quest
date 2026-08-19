@@ -1,22 +1,35 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../services/api";
 
 const emptyTestCase = { input: "", expectedOutput: "", isHidden: false };
 
+const starterCodes = {
+  javascript: `function solve(input) {\n  // Write your solution here\n}`,
+  python: `def solve(input):\n    # Write your solution here\n    pass`,
+  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}`,
+};
+
+// NOTE: This page only creates CODING challenges — that's the only
+// question type backed by the `challenges` table (title, test cases,
+// starter code, Run/Submit). Multiple Choice, True/False and Short
+// Answer questions live on an EXAM instead (see the `exam_questions`
+// table), so they're created from the "Manage Exams" page, which
+// already has a fully working form for all four question types.
 export default function AdminChallenges() {
   const [challenges, setChallenges] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
- const [form, setForm] = useState({
-  title: "",
-  description: "",
-  difficulty: "easy",
-  category: "",
-  xpReward: 100,
-  language: "javascript",
-  starterCode: "",
-});
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    difficulty: "easy",
+    category: "",
+    xpReward: 100,
+    language: "javascript",
+    starterCode: starterCodes.javascript,
+  });
 
   const [testCases, setTestCases] = useState([{ ...emptyTestCase }]);
 
@@ -47,7 +60,7 @@ export default function AdminChallenges() {
     setTestCases((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function createChallenge(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setMessage("");
@@ -59,12 +72,12 @@ export default function AdminChallenges() {
         difficulty: form.difficulty,
         category: form.category,
         xpReward: Number(form.xpReward) || 100,
-       languages: [
-  {
-    language: form.language,
-    starterCode: form.starterCode,
-  },
-],
+        languages: [
+          {
+            language: form.language,
+            starterCode: form.starterCode,
+          },
+        ],
         testCases: testCases
           .filter((tc) => tc.expectedOutput.trim() !== "")
           .map((tc) => ({
@@ -74,23 +87,25 @@ export default function AdminChallenges() {
           })),
       });
 
-      setMessage("Challenge created.");
-setForm({
-  title: "",
-  description: "",
-  difficulty: "easy",
-  category: "",
-  xpReward: 100,
-  language: "javascript",
-  starterCode: `function solve(input) {
-  // Write your solution here
-}`,
-});
-      setTestCases([{ ...emptyTestCase }]);
+      setMessage("Coding challenge created successfully.");
+      resetForm();
       loadChallenges();
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  function resetForm() {
+    setForm({
+      title: "",
+      description: "",
+      difficulty: "easy",
+      category: "",
+      xpReward: 100,
+      language: "javascript",
+      starterCode: starterCodes.javascript,
+    });
+    setTestCases([{ ...emptyTestCase }]);
   }
 
   async function deleteChallenge(id) {
@@ -104,13 +119,20 @@ setForm({
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">MANAGE CHALLENGES</h1>
+      <h1 className="text-3xl font-bold text-white mb-2">MANAGE CODING CHALLENGES</h1>
+
+      <p className="text-sm text-gray-500 mb-8">
+        Need Multiple Choice, True/False, or Short Answer questions instead?
+        Those are created on the{" "}
+        <Link to="/admin/exams" className="text-cyan-400 underline">
+          Manage Exams
+        </Link>{" "}
+        page, where you can also mix them with coding questions in one exam.
+      </p>
 
       <div className="grid xl:grid-cols-3 gap-6">
-        <form onSubmit={createChallenge} className="xl:col-span-2 border border-gray-800 bg-[#0d1117] p-6 space-y-3">
-         <h2 className="text-white font-bold mb-2">
-  CREATE CHALLENGE
-</h2>
+        <form onSubmit={handleSubmit} className="xl:col-span-2 border border-gray-800 bg-[#0d1117] p-6 space-y-3">
+          <h2 className="text-white font-bold mb-2">CREATE CODING CHALLENGE</h2>
 
           {error && <div className="text-red-400 text-sm">{error}</div>}
           {message && <div className="text-green-400 text-sm">{message}</div>}
@@ -122,45 +144,7 @@ setForm({
             className="input"
             required
           />
-          <div>
-  <label className="block text-xs text-gray-500 font-mono mb-2">
-    PROGRAMMING LANGUAGE
-  </label>
 
-  <select
-    value={form.language}
-    onChange={(e) => {
-      const language = e.target.value;
-
-      const starterCodes = {
-        javascript: `function solve(input) {
-  // Write your solution here
-}`,
-        python: `def solve(input):
-    # Write your solution here
-    pass`,
-        cpp: `#include <iostream>
-using namespace std;
-
-int main() {
-    // Write your solution here
-    return 0;
-}`,
-      };
-
-      setForm({
-        ...form,
-        language,
-        starterCode: starterCodes[language],
-      });
-    }}
-    className="input"
-  >
-    <option value="javascript">JavaScript</option>
-    <option value="python">Python</option>
-    <option value="cpp">C++</option>
-  </select>
-</div>
           <textarea
             placeholder="Description (explain what the student should solve)"
             value={form.description}
@@ -181,7 +165,7 @@ int main() {
             </select>
 
             <input
-              placeholder="Category (e.g. Loops)"
+              placeholder="Category (e.g. Loops, Basics)"
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
               className="input"
@@ -196,8 +180,30 @@ int main() {
             />
           </div>
 
+          <div>
+            <label className="block text-xs text-gray-500 font-mono mb-2">
+              PROGRAMMING LANGUAGE
+            </label>
+            <select
+              value={form.language}
+              onChange={(e) => {
+                const language = e.target.value;
+                setForm({
+                  ...form,
+                  language,
+                  starterCode: starterCodes[language],
+                });
+              }}
+              className="input"
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="cpp">C++</option>
+            </select>
+          </div>
+
           <textarea
-            placeholder={"Starter code, e.g.\nfunction solve(input) {\n  return input;\n}"}
+            placeholder="Starter code"
             value={form.starterCode}
             onChange={(e) => setForm({ ...form, starterCode: e.target.value })}
             className="input min-h-32 font-mono text-sm"
@@ -245,12 +251,13 @@ int main() {
             ))}
           </div>
 
-          <button className="w-full mt-2 bg-cyan-400 text-black font-bold py-3 hover:bg-cyan-300">
+          <button className="w-full mt-4 bg-cyan-400 text-black font-bold py-3 hover:bg-cyan-300 transition-colors">
             CREATE CHALLENGE
           </button>
         </form>
 
-        <div className="border border-gray-800 bg-[#0d1117] overflow-x-auto">
+        {/* EXISTING CHALLENGES LIST */}
+        <div className="border border-gray-800 bg-[#0d1117] overflow-x-auto h-fit">
           <table className="w-full text-sm">
             <thead className="border-b border-gray-800">
               <tr className="text-left text-gray-500 font-mono text-xs">
@@ -271,6 +278,9 @@ int main() {
                   </td>
                 </tr>
               ))}
+              {challenges.length === 0 && (
+                <tr><td colSpan={3} className="p-6 text-center text-gray-500">No challenges yet.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

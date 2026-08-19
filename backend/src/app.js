@@ -6,6 +6,7 @@ import userRoutes from "./routes/user.routes.js";
 import challengeRoutes from "./routes/challengeRoutes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import violationRoutes from "./routes/violation.routes.js";
+import examRoutes from "./routes/examRoutes.js";
 
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/violations", violationRoutes);
+app.use("/api/exams", examRoutes);
 
 app.use(errorHandler);
 

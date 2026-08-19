@@ -4,6 +4,8 @@ import {
   User,
   Shield,
   Users,
+  Timer,
+  ClipboardList,
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -28,11 +30,6 @@ export default function Sidebar() {
       path: "/profile",
       icon: User,
     },
-    {
-        name: "Manage Challenges",
-        path: "/admin/challenges",
-        icon: Code2,
-      }
   ];
 
   if (user?.role === "admin") {
@@ -46,6 +43,16 @@ export default function Sidebar() {
         name: "Students",
         path: "/admin/students",
         icon: Users,
+      },
+      {
+        name: "Manage Exams",
+        path: "/admin/exams",
+        icon: Timer,
+      },
+      {
+        name: "Submissions",
+        path: "/admin/submissions",
+        icon: ClipboardList,
       }
     );
   }

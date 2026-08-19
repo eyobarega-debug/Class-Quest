@@ -8,7 +8,7 @@ export default function AppLayout() {
   const { user } = useAuth();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-void">
+    <div className="flex h-screen overflow-hidden bg-[#0A0D14] text-[#F8FAFC]">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
@@ -21,9 +21,6 @@ export default function AppLayout() {
   );
 }
 
-// Section 29 of the brief requires a mobile nav menu. A bottom tab
-// bar is the standard pattern for touch navigation, and keeps the
-// same core destinations reachable without the desktop sidebar.
 function MobileNav({ role }) {
   const links =
     role === 'admin'
@@ -37,14 +34,14 @@ function MobileNav({ role }) {
         ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border-subtle bg-surface/95 backdrop-blur-sm flex">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-[#1E293B] bg-[#121723]/95 backdrop-blur-md flex">
       {links.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] ${
-              isActive ? 'text-xp' : 'text-text-muted'
+            `flex-1 flex flex-col items-center gap-1 py-3 text-[11px] transition-colors ${
+              isActive ? 'text-[#A855F7] font-semibold' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
             }`
           }
         >

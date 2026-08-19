@@ -107,12 +107,13 @@ export const api = {
 
     return res.data;
   },
+
   deleteStudent: async (id) => {
-  await client.delete(`/users/${id}`);
-},
+    await client.delete(`/users/${id}`);
+  },
 
   // ===============================
-  // CHALLENGES
+  // CHALLENGES & QUESTIONS
   // ===============================
 
   challenges: async (filters = {}) => {
@@ -172,7 +173,7 @@ export const api = {
   },
 
   // ===============================
-  // CODE RUN
+  // CODE RUN & SUBMISSION
   // ===============================
 
   runCode: async ({
@@ -191,20 +192,18 @@ export const api = {
     return res.data;
   },
 
-  // ===============================
-  // CODE SUBMIT
-  // ===============================
-
   submitCode: async ({
     slug,
     language,
     source_code,
+    examAttemptId,
   }) => {
     const res = await client.post(
       `/challenges/${slug}/submit`,
       {
         language,
         sourceCode: source_code,
+        examAttemptId,
       }
     );
 
@@ -212,10 +211,29 @@ export const api = {
   },
 
   // ===============================
+  // ADMIN: WHAT STUDENTS HAVE SUBMITTED
+  // ===============================
+
+  // Every coding submission across all students (source code + score
+  // "out of" the test cases, not XP). Optional filters.
+  adminSubmissions: async ({ studentId, challengeId } = {}) => {
+    const params = {};
+    if (studentId) params.studentId = studentId;
+    if (challengeId) params.challengeId = challengeId;
+
+    const res = await client.get("/challenges/submissions", { params });
+    return res.data.submissions;
+  },
+
+  adminSubmissionDetail: async (id) => {
+    const res = await client.get(`/challenges/submissions/${id}`);
+    return res.data.submission;
+  },
+
+  // ===============================
   // VIOLATION MONITORING
   // ===============================
 
-  // Start a monitoring session
   startTestSession: async (challengeId) => {
     const res = await client.post(
       "/violations/sessions/start",
@@ -224,13 +242,9 @@ export const api = {
       }
     );
 
-    // IMPORTANT:
-    // Return the complete response because
-    // ChallengeDetail.jsx uses data.session
     return res.data;
   },
 
-  // Report violation
   reportViolation: async ({
     sessionId,
     challengeId,
@@ -254,7 +268,6 @@ export const api = {
     return res.data;
   },
 
-  // Finish monitoring session
   finishTestSession: async (sessionId) => {
     const res = await client.post(
       "/violations/sessions/finish",
@@ -270,7 +283,6 @@ export const api = {
   // ADMIN VIOLATIONS
   // ===============================
 
-  // Get recent violations
   violations: async ({
     limit = 100,
     offset = 0,
@@ -288,13 +300,123 @@ export const api = {
     return res.data.violations;
   },
 
-  // Get violations for one session
+    // Get violations for one session
   sessionViolations: async (sessionId) => {
     const res = await client.get(
       `/violations/session/${sessionId}`
     );
 
     return res.data.violations;
+  },
+
+  // ===============================
+  // EXAMS
+  // ===============================
+
+  exams: async () => {
+    const res = await client.get("/exams");
+    return res.data.exams;
+  },
+
+  exam: async (id) => {
+    const res = await client.get(`/exams/${id}`);
+    return res.data; // { exam, questions? }
+  },
+
+  createExam: async ({ title, description, durationMinutes, password }) => {
+    const res = await client.post("/exams", {
+      title,
+      description,
+      durationMinutes,
+      password,
+    });
+    return res.data.exam;
+  },
+
+  updateExam: async (id, { title, description, durationMinutes, isPublished }) => {
+    const res = await client.patch(`/exams/${id}`, {
+      title,
+      description,
+      durationMinutes,
+      isPublished,
+    });
+    return res.data.exam;
+  },
+
+  changeExamPassword: async (id, password) => {
+    const res = await client.patch(`/exams/${id}/password`, { password });
+    return res.data.exam;
+  },
+
+  deleteExam: async (id) => {
+    await client.delete(`/exams/${id}`);
+  },
+
+  createExamQuestion: async (examId, payload) => {
+    const res = await client.post(`/exams/${examId}/questions`, payload);
+    return res.data.question;
+  },
+
+  // Bulk import: create many questions on one exam in a single call
+  // (e.g. paste a whole exam's worth of mcq/true_false/short_answer/
+  // coding questions at once).
+  createExamQuestionsBulk: async (examId, questions) => {
+    const res = await client.post(`/exams/${examId}/questions/bulk`, { questions });
+    return res.data.questions;
+  },
+
+  updateExamQuestion: async (examId, questionId, payload) => {
+    const res = await client.patch(`/exams/${examId}/questions/${questionId}`, payload);
+    return res.data.question;
+  },
+
+  deleteExamQuestion: async (examId, questionId) => {
+    await client.delete(`/exams/${examId}/questions/${questionId}`);
+  },
+
+  // Student flow: verify password -> start -> answer -> finish.
+  // The password is only ever sent over these two calls, never stored.
+
+  verifyExamPassword: async (examId, password) => {
+    const res = await client.post(`/exams/${examId}/verify-password`, { password });
+    return res.data;
+  },
+
+  startExam: async (examId, password) => {
+    const res = await client.post(`/exams/${examId}/start`, { password });
+    return res.data; // { attempt, exam, questions }
+  },
+
+  examAttemptStatus: async (attemptId) => {
+    const res = await client.get(`/exams/attempts/${attemptId}`);
+    return res.data.attempt;
+  },
+
+  answerExamQuestion: async (attemptId, questionId, answer) => {
+    const res = await client.post(`/exams/attempts/${attemptId}/answers`, {
+      questionId,
+      answer,
+    });
+    return res.data;
+  },
+
+  finishExam: async (attemptId) => {
+    const res = await client.post(`/exams/attempts/${attemptId}/finish`);
+    return res.data.attempt;
+  },
+
+  // ===============================
+  // ADMIN: WHAT STUDENTS HAVE DONE ON AN EXAM
+  // ===============================
+
+  examAttempts: async (examId) => {
+    const res = await client.get(`/exams/${examId}/attempts`);
+    return res.data.attempts;
+  },
+
+  examAttemptDetail: async (attemptId) => {
+    const res = await client.get(`/exams/attempts/${attemptId}/admin`);
+    return res.data; // { attempt, questions }
   },
 };
 

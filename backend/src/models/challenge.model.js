@@ -31,12 +31,16 @@ export async function listChallenges({
   }
 
   let languageCondition = "";
+
   if (language) {
     params.push(language);
+
     languageCondition = `
       AND EXISTS (
-        SELECT 1 FROM challenge_languages cl
-        WHERE cl.challenge_id = challenges.id AND cl.language = $${params.length}
+        SELECT 1
+        FROM challenge_languages cl
+        WHERE cl.challenge_id = challenges.id
+          AND cl.language = $${params.length}
       )
     `;
   }
@@ -51,7 +55,8 @@ export async function listChallenges({
     WHERE ${conditions.join(" AND ")}
     ${languageCondition}
     ORDER BY created_at DESC
-    LIMIT $${params.length - 1} OFFSET $${params.length}
+    LIMIT $${params.length - 1}
+    OFFSET $${params.length}
     `,
     params
   );
@@ -66,11 +71,16 @@ export async function getChallengeBySlug(slug) {
   );
 
   const challenge = challengeResult.rows[0];
-  if (!challenge) return null;
+
+  if (!challenge) {
+    return null;
+  }
 
   const languagesResult = await pool.query(
-    `SELECT id, language, starter_code FROM challenge_languages
-     WHERE challenge_id = $1 ORDER BY language`,
+    `SELECT id, language, starter_code
+     FROM challenge_languages
+     WHERE challenge_id = $1
+     ORDER BY language`,
     [challenge.id]
   );
 
@@ -78,7 +88,8 @@ export async function getChallengeBySlug(slug) {
   const publicTestsResult = await pool.query(
     `SELECT id, input, expected_output
      FROM test_cases
-     WHERE challenge_id = $1 AND is_hidden = false
+     WHERE challenge_id = $1
+       AND is_hidden = false
      ORDER BY order_index`,
     [challenge.id]
   );
@@ -100,11 +111,16 @@ export async function getAllTestCases(challengeId) {
      ORDER BY order_index`,
     [challengeId]
   );
+
   return result.rows;
 }
 
 export async function getChallengeById(id) {
-  const result = await pool.query(`SELECT * FROM challenges WHERE id = $1`, [id]);
+  const result = await pool.query(
+    `SELECT * FROM challenges WHERE id = $1`,
+    [id]
+  );
+
   return result.rows[0] || null;
 }
 
@@ -130,32 +146,76 @@ export async function createChallenge({
 
     const challengeResult = await client.query(
       `INSERT INTO challenges
-        (title, slug, description, difficulty, category, tags, xp_reward, time_limit_ms, memory_limit_mb, constraints, created_by)
+        (
+          title,
+          slug,
+          description,
+          difficulty,
+          category,
+          tags,
+          xp_reward,
+          time_limit_ms,
+          memory_limit_mb,
+          constraints,
+          created_by
+        )
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
-      [title, slug, description, difficulty, category, tags, xpReward, timeLimitMs, memoryLimitMb, constraints, createdBy]
+      [
+        title,
+        slug,
+        description,
+        difficulty,
+        category,
+        tags,
+        xpReward,
+        timeLimitMs,
+        memoryLimitMb,
+        constraints,
+        createdBy,
+      ]
     );
 
     const challenge = challengeResult.rows[0];
 
     for (const lang of languages) {
       await client.query(
-        `INSERT INTO challenge_languages (challenge_id, language, starter_code)
+        `INSERT INTO challenge_languages
+          (challenge_id, language, starter_code)
          VALUES ($1, $2, $3)`,
-        [challenge.id, lang.language, lang.starterCode || ""]
+        [
+          challenge.id,
+          lang.language,
+          lang.starterCode || "",
+        ]
       );
     }
 
     for (let i = 0; i < testCases.length; i++) {
       const tc = testCases[i];
+
       await client.query(
-        `INSERT INTO test_cases (challenge_id, input, expected_output, is_hidden, order_index)
+        `INSERT INTO test_cases
+          (
+            challenge_id,
+            input,
+            expected_output,
+            is_hidden,
+            order_index
+          )
          VALUES ($1, $2, $3, $4, $5)`,
-        [challenge.id, tc.input || "", tc.expectedOutput, Boolean(tc.isHidden), i]
+        [
+          challenge.id,
+          tc.input || "",
+          tc.expectedOutput,
+          Boolean(tc.isHidden),
+          i,
+        ]
       );
     }
 
     await client.query("COMMIT");
+
     return challenge;
   } catch (error) {
     await client.query("ROLLBACK");
@@ -182,18 +242,27 @@ export async function updateChallenge(id, fields) {
 
   for (const [key, value] of Object.entries(fields)) {
     const column = UPDATE_FIELD_MAP[key];
-    if (!column) continue;
+
+    if (!column) {
+      continue;
+    }
+
     params.push(value);
     sets.push(`${column} = $${params.length}`);
   }
 
-  if (sets.length === 0) return getChallengeById(id);
+  if (sets.length === 0) {
+    return getChallengeById(id);
+  }
 
   params.push(id);
 
   const result = await pool.query(
-    `UPDATE challenges SET ${sets.join(", ")}, updated_at = NOW()
-     WHERE id = $${params.length} RETURNING *`,
+    `UPDATE challenges
+     SET ${sets.join(", ")},
+         updated_at = NOW()
+     WHERE id = $${params.length}
+     RETURNING *`,
     params
   );
 
@@ -202,9 +271,12 @@ export async function updateChallenge(id, fields) {
 
 export async function deleteChallenge(id) {
   const result = await pool.query(
-    `DELETE FROM challenges WHERE id = $1 RETURNING id`,
+    `DELETE FROM challenges
+     WHERE id = $1
+     RETURNING id`,
     [id]
   );
+
   return result.rows.length > 0;
 }
 
@@ -218,22 +290,110 @@ export async function createSubmission({
   totalTests,
   executionTimeMs,
   xpEarned,
+  examAttemptId = null,
 }) {
   const result = await pool.query(
     `INSERT INTO submissions
-      (user_id, challenge_id, language, source_code, status, passed_tests, total_tests, execution_time_ms, xp_earned)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (
+        user_id,
+        challenge_id,
+        language,
+        source_code,
+        status,
+        passed_tests,
+        total_tests,
+        execution_time_ms,
+        xp_earned,
+        exam_attempt_id
+      )
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      RETURNING *`,
-    [userId, challengeId, language, sourceCode, status, passedTests, totalTests, executionTimeMs, xpEarned]
+    [
+      userId,
+      challengeId,
+      language,
+      sourceCode,
+      status,
+      passedTests,
+      totalTests,
+      executionTimeMs,
+      xpEarned,
+      examAttemptId,
+    ]
   );
+
   return result.rows[0];
+}
+
+// ADMIN: every submission across all students, newest first, with
+// the student and challenge joined in so the admin view doesn't need
+// N extra requests. Optional filters by userId / challengeId.
+export async function listSubmissionsForAdmin({ userId, challengeId, limit = 200, offset = 0 } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (userId) {
+    params.push(userId);
+    conditions.push(`s.user_id = $${params.length}`);
+  }
+
+  if (challengeId) {
+    params.push(challengeId);
+    conditions.push(`s.challenge_id = $${params.length}`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  params.push(limit);
+  params.push(offset);
+
+  const result = await pool.query(
+    `
+    SELECT
+      s.*,
+      u.username, u.full_name,
+      c.title AS challenge_title, c.slug AS challenge_slug
+    FROM submissions s
+    JOIN users u ON u.id = s.user_id
+    JOIN challenges c ON c.id = s.challenge_id
+    ${where}
+    ORDER BY s.created_at DESC
+    LIMIT $${params.length - 1}
+    OFFSET $${params.length}
+    `,
+    params
+  );
+
+  return result.rows;
+}
+
+export async function getSubmissionByIdForAdmin(id) {
+  const result = await pool.query(
+    `
+    SELECT
+      s.*,
+      u.username, u.full_name,
+      c.title AS challenge_title, c.slug AS challenge_slug
+    FROM submissions s
+    JOIN users u ON u.id = s.user_id
+    JOIN challenges c ON c.id = s.challenge_id
+    WHERE s.id = $1
+    `,
+    [id]
+  );
+  return result.rows[0] || null;
 }
 
 export async function hasAcceptedSubmission(userId, challengeId) {
   const result = await pool.query(
-    `SELECT id FROM submissions
-     WHERE user_id = $1 AND challenge_id = $2 AND status = 'accepted' LIMIT 1`,
+    `SELECT id
+     FROM submissions
+     WHERE user_id = $1
+       AND challenge_id = $2
+       AND status = 'accepted'
+     LIMIT 1`,
     [userId, challengeId]
   );
+
   return result.rows.length > 0;
 }
