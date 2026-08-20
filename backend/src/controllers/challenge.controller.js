@@ -108,12 +108,11 @@ export async function postChallenge(req, res) {
   const {
     title, description, difficulty, category, tags,
     xpReward, timeLimitMs, memoryLimitMb, constraints,
-    languages, testCases,
+    languages, testCases, isPublished,
   } = req.body;
 
-  const challenge = await createChallenge({
+  const basePayload = {
     title,
-    slug: slugify(title),
     description,
     difficulty,
     category,
@@ -125,11 +124,29 @@ export async function postChallenge(req, res) {
     languages,
     testCases: testCases || [],
     createdBy: req.user.id,
-  });
+    isPublished: isPublished === undefined ? true : Boolean(isPublished),
+  };
+
+  // Slugs must be unique. Exam-only questions are likely to reuse
+  // generic titles across different exams ("Loops", "Arrays"), so
+  // retry with a short random suffix on collision instead of erroring.
+  let challenge;
+  let attempt = 0;
+
+  while (!challenge) {
+    attempt += 1;
+    const slug = attempt === 1 ? slugify(title) : `${slugify(title)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    try {
+      challenge = await createChallenge({ ...basePayload, slug });
+    } catch (error) {
+      if (error.code === "23505" && attempt < 5) continue; // unique_violation, retry
+      throw error;
+    }
+  }
 
   res.status(201).json({ challenge });
 }
-
 export async function patchChallenge(req, res) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {

@@ -31,6 +31,7 @@ export default function ExamTake() {
   const pollRef = useRef(null);
   const finishingRef = useRef(false);
   const monitoringStarted = useRef(false);
+  const testSessionId = useRef(null); // proctoring session id, set once monitoring starts
 
   useEffect(() => {
     if (location.state) return;
@@ -92,6 +93,8 @@ export default function ExamTake() {
         const data = await api.startTestSession({ examAttemptId: attempt.id });
         if (!data?.session?.id) throw new Error("Proctoring session was not created.");
 
+        testSessionId.current = data.session.id;
+
         const monitorResponse = await fetch(`${MONITOR_URL}/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -119,12 +122,38 @@ export default function ExamTake() {
     startMonitoring();
   }, [attempt, exam, monitorStatus]);
 
+  // Stop the Electron monitor and close out the backend proctoring
+  // session (mark it "completed" instead of leaving it "active"
+  // forever) whenever the student leaves this page for any reason.
   useEffect(() => {
     return () => {
-      if (!monitoringStarted.current) return;
+      if (monitoringStarted.current) {
+        fetch(`${MONITOR_URL}/stop`, { method: "POST" }).catch(() => {});
+        monitoringStarted.current = false;
+      }
+      if (testSessionId.current) {
+        api.finishTestSession(testSessionId.current).catch(() => {});
+        testSessionId.current = null;
+      }
+    };
+  }, []);
+
+  // Same cleanup, but called explicitly the moment the exam is
+  // actually submitted/expired — don't wait for unmount, since the
+  // student may sit on the "EXAM SUBMITTED" screen for a while.
+  const stopProctoring = useCallback(async () => {
+    if (monitoringStarted.current) {
       fetch(`${MONITOR_URL}/stop`, { method: "POST" }).catch(() => {});
       monitoringStarted.current = false;
-    };
+    }
+    if (testSessionId.current) {
+      try {
+        await api.finishTestSession(testSessionId.current);
+      } catch (err) {
+        console.error("FAILED TO CLOSE PROCTORING SESSION:", err);
+      }
+      testSessionId.current = null;
+    }
   }, []);
 
   const finishExam = useCallback(async () => {
@@ -133,11 +162,12 @@ export default function ExamTake() {
     try {
       const result = await api.finishExam(attempt.id);
       setFinished(result);
+      await stopProctoring();
     } catch (err) {
       setError(err.message);
       finishingRef.current = false;
     }
-  }, [attempt]);
+  }, [attempt, stopProctoring]);
 
   useEffect(() => {
     if (!attempt || finished) return;
