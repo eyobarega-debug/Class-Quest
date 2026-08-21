@@ -1,4 +1,4 @@
-const { app } = require("electron");
+﻿const { app } = require("electron");
 
 const http = require("http");
 const https = require("https");
@@ -15,7 +15,7 @@ const MONITOR_PORT = 3847;
 // ==========================================
 
 const DEFAULT_API_BASE_URL =
-  "https://classquest-backend.onrender.com/api";
+  "http://localhost:5000/api";
 
 let apiBaseUrl =
   DEFAULT_API_BASE_URL;
@@ -241,11 +241,11 @@ async function reportViolation(
               res.statusCode < 300
             ) {
               console.log(
-                "✅ Violation successfully saved to backend."
+                "âœ… Violation successfully saved to backend."
               );
             } else {
               console.error(
-                "❌ Backend rejected violation."
+                "âŒ Backend rejected violation."
               );
             }
           }
@@ -269,7 +269,7 @@ async function reportViolation(
 
   console.log("");
   console.log(
-    "🚨 VIOLATION DETECTED"
+    "ðŸš¨ VIOLATION DETECTED"
   );
   console.log(
     "Application:",
