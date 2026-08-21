@@ -1,48 +1,60 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* Tailwind CSS v4 Theme Token Definitions */
+/* ==========================================================================
+   FIELD LEDGER — ClassQuest design tokens
+   A warm expedition-journal aesthetic: aged paper, brass, and ink instead
+   of the generic dark-mode-with-neon-glow look most coding platforms use.
+   ========================================================================== */
 @theme {
-  --font-sans: "Space Grotesk", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
-  /* App Backgrounds */
-  --color-void: #090d16;             /* Deep Obsidian Main Background */
-  --color-surface: #111726;          /* Card & Sidebar Panel Background */
-  --color-surface-raised: #182032;   /* Inputs, Active Pills & Hover States */
+  /* Backgrounds */
+  --color-vellum: #f1e9dc;       /* Page background — aged paper */
+  --color-vellum-raised: #e7dcc8; /* Cards, panels */
+  --color-vellum-deep: #ddd0b6;   /* Inputs, pressed/active surfaces */
 
-  /* Borders & Dividers */
-  --color-border-subtle: #1e293b;    /* Dark Slate Border */
-  --color-border-focus: #a855f7;     /* Purple Radiant Focus Border */
+  /* Ink & text */
+  --color-ink: #241e19;          /* Primary text — warm near-black */
+  --color-ink-muted: #6b5f4f;    /* Secondary text, captions */
+  --color-ink-faint: #93876f;    /* Placeholder, disabled */
 
-  /* Text Typography */
-  --color-text-primary: #f8fafc;     /* Crisp High-Contrast White Text */
-  --color-text-muted: #94a3b8;       /* Subtle Secondary Slate Text */
+  /* Accents */
+  --color-brass: #a9761f;        /* Primary accent — CTAs, XP, active states */
+  --color-brass-dark: #8a5f16;   /* Brass hover/pressed */
+  --color-teal: #1f5c54;         /* Secondary accent — links, success, info */
+  --color-teal-dark: #164841;
+  --color-red: #9c3b2e;          /* Danger — errors, violations */
+  --color-red-dark: #7c2e23;
 
-  /* ClassQuest Brand Accents */
-  --color-xp: #a855f7;               /* Gamification Electric Purple */
-  --color-rating: #06b6d4;           /* Cyan Accent for Ratings & Missions */
-  --color-danger: #f87171;           /* Logout & Error Red */
-  --color-success: #34d399;          /* Easy Challenge Green */
-  --color-warn: #fbbf24;             /* Medium Challenge Gold */
+  /* Structure */
+  --color-line: #c9bba0;         /* Hairline borders / dividers */
+  --color-line-strong: #a99872;
 }
 
-/* Fallback CSS Custom Variables */
+/* Fallback custom properties (for any plain CSS outside @theme) */
 :root {
-  --color-xp: #a855f7;
-  --color-rating: #06b6d4;
-  --color-void: #090d16;
-  --color-surface: #111726;
-  --color-surface-raised: #182032;
-  --color-border-subtle: #1e293b;
-  --color-text-primary: #f8fafc;
-  --color-text-muted: #94a3b8;
-  --color-danger: #f87171;
-  --color-success: #34d399;
-  --color-warn: #fbbf24;
+  --color-vellum: #f1e9dc;
+  --color-vellum-raised: #e7dcc8;
+  --color-vellum-deep: #ddd0b6;
+  --color-ink: #241e19;
+  --color-ink-muted: #6b5f4f;
+  --color-ink-faint: #93876f;
+  --color-brass: #a9761f;
+  --color-brass-dark: #8a5f16;
+  --color-teal: #1f5c54;
+  --color-teal-dark: #164841;
+  --color-red: #9c3b2e;
+  --color-red-dark: #7c2e23;
+  --color-line: #c9bba0;
+  --color-line-strong: #a99872;
 }
 
-/* Base Styles */
+/* ==========================================================================
+   Base
+   ========================================================================== */
 * {
   box-sizing: border-box;
 }
@@ -51,9 +63,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--color-void);
-  color: var(--color-text-primary);
-  font-family: "Space Grotesk", sans-serif;
+  background-color: var(--color-vellum);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   min-height: 100vh;
 }
 
@@ -64,24 +76,133 @@ textarea {
   font-family: inherit;
 }
 
-/* Universal Focus Ring Helper */
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
+
 .focus-ring:focus-visible {
-  outline: 2px solid var(--color-xp);
+  outline: 2px solid var(--color-brass);
   outline-offset: 2px;
 }
 
-/* Custom Sleek Scrollbar */
+*:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-void);
+  background: var(--color-vellum);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
+  background: var(--color-line-strong);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: var(--color-ink-faint);
+}
+
+/* ==========================================================================
+   Component utility classes
+   Used with plain className="input" / "btn-primary" etc. across the app —
+   defining them here restyles every existing form without touching each
+   page's markup.
+   ========================================================================== */
+@layer components {
+  .input {
+    width: 100%;
+    background-color: var(--color-vellum-deep);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
+    padding: 0.65rem 0.85rem;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .input::placeholder {
+    color: var(--color-ink-faint);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-brass);
+    background-color: var(--color-vellum-raised);
+  }
+  .input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-brass);
+    color: var(--color-vellum);
+    font-weight: 600;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--color-brass-dark);
+    transition: background-color 0.15s ease;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-brass-dark);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--color-ink);
+    font-weight: 600;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--color-line-strong);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-brass);
+    background-color: var(--color-vellum-raised);
+  }
+
+  /* Ledger card — the base panel style used for most content blocks */
+  .ledger-card {
+    background-color: var(--color-vellum-raised);
+    border: 1px solid var(--color-line);
+  }
+
+  /* Ticket-stub card — signature element for challenge / exam / mission
+     cards. Dashed top edge with small notches, like a torn ticket. */
+  .ticket-card {
+    position: relative;
+    background-color: var(--color-vellum-raised);
+    border: 1px solid var(--color-line);
+    border-top: none;
+  }
+  .ticket-card::before {
+    content: "";
+    display: block;
+    height: 0;
+    border-top: 2px dashed var(--color-line-strong);
+    margin: 0 0.75rem;
+  }
+  .ticket-card::after {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    height: 6px;
+    background:
+      radial-gradient(circle at 0 6px, transparent 6px, var(--color-vellum) 6.5px) 0 0 / 12px 12px repeat-x;
+  }
+
+  .badge-mono {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--color-line-strong);
+    color: var(--color-ink-muted);
+  }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Users,
   Code2,
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   // LOAD DASHBOARD
   // ==========================================
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     try {
       const students = await api.students();
       setStudentCount(students.length);
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
     } finally {
       setLoadingViolations(false);
     }
-  }
+  }, []);
 
   // ==========================================
   // AUTO REFRESH
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadDashboard]);
 
   // ==========================================
   // GROUP VIOLATIONS BY STUDENT

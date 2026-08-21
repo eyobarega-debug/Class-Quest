@@ -119,23 +119,23 @@ export default function AdminChallenges() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-2">MANAGE CODING CHALLENGES</h1>
+      <h1 className="text-3xl font-bold text-[var(--color-ink)] mb-2">MANAGE CODING CHALLENGES</h1>
 
-      <p className="text-sm text-gray-500 mb-8">
+      <p className="text-sm text-[var(--color-ink-muted)] mb-8">
         Need Multiple Choice, True/False, or Short Answer questions instead?
         Those are created on the{" "}
-        <Link to="/admin/exams" className="text-cyan-400 underline">
+        <Link to="/admin/exams" className="text-[var(--color-brass-dark)] underline">
           Manage Exams
         </Link>{" "}
         page, where you can also mix them with coding questions in one exam.
       </p>
 
       <div className="grid xl:grid-cols-3 gap-6">
-        <form onSubmit={handleSubmit} className="xl:col-span-2 border border-gray-800 bg-[#0d1117] p-6 space-y-3">
-          <h2 className="text-white font-bold mb-2">CREATE CODING CHALLENGE</h2>
+        <form onSubmit={handleSubmit} className="xl:col-span-2 ledger-card p-6 space-y-3">
+          <h2 className="text-[var(--color-ink)] font-bold mb-2">CREATE CODING CHALLENGE</h2>
 
-          {error && <div className="text-red-400 text-sm">{error}</div>}
-          {message && <div className="text-green-400 text-sm">{message}</div>}
+          {error && <div className="text-[var(--color-red-dark)] text-sm">{error}</div>}
+          {message && <div className="text-[var(--color-teal-dark)] text-sm">{message}</div>}
 
           <input
             placeholder="Title"
@@ -181,7 +181,7 @@ export default function AdminChallenges() {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 font-mono mb-2">
+            <label className="block text-xs text-[var(--color-ink-muted)] font-mono mb-2">
               PROGRAMMING LANGUAGE
             </label>
             <select
@@ -212,8 +212,8 @@ export default function AdminChallenges() {
 
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs text-gray-500 font-mono">TEST CASES</h3>
-              <button type="button" onClick={addTestCase} className="text-xs text-cyan-400 hover:underline">
+              <h3 className="text-xs text-[var(--color-ink-muted)] font-mono">TEST CASES</h3>
+              <button type="button" onClick={addTestCase} className="text-xs text-[var(--color-brass-dark)] hover:underline">
                 + ADD TEST CASE
               </button>
             </div>
@@ -232,7 +232,7 @@ export default function AdminChallenges() {
                   onChange={(e) => updateTestCase(i, "expectedOutput", e.target.value)}
                   className="input col-span-4"
                 />
-                <label className="col-span-3 text-xs text-gray-400 flex items-center gap-2">
+                <label className="col-span-3 text-xs text-[var(--color-ink-muted)] flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={tc.isHidden}
@@ -243,7 +243,7 @@ export default function AdminChallenges() {
                 <button
                   type="button"
                   onClick={() => removeTestCase(i)}
-                  className="col-span-1 text-red-400 text-xs"
+                  className="col-span-1 text-[var(--color-red-dark)] text-xs"
                 >
                   ✕
                 </button>
@@ -251,16 +251,16 @@ export default function AdminChallenges() {
             ))}
           </div>
 
-          <button className="w-full mt-4 bg-cyan-400 text-black font-bold py-3 hover:bg-cyan-300 transition-colors">
+          <button className="w-full mt-4 bg-[var(--color-brass)] text-[var(--color-vellum)] font-bold py-3 hover:bg-[var(--color-brass-dark)] transition-colors">
             CREATE CHALLENGE
           </button>
         </form>
 
         {/* EXISTING CHALLENGES LIST */}
-        <div className="border border-gray-800 bg-[#0d1117] overflow-x-auto h-fit">
+        <div className="ledger-card overflow-x-auto h-fit">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-800">
-              <tr className="text-left text-gray-500 font-mono text-xs">
+            <thead className="border-b border-[var(--color-line)]">
+              <tr className="text-left text-[var(--color-ink-muted)] font-mono text-xs">
                 <th className="p-4">TITLE</th>
                 <th className="p-4">DIFF</th>
                 <th className="p-4"></th>
@@ -268,18 +268,18 @@ export default function AdminChallenges() {
             </thead>
             <tbody>
               {challenges.map((c) => (
-                <tr key={c.id} className="border-b border-gray-800">
-                  <td className="p-4 text-white">{c.title}</td>
-                  <td className="p-4 text-gray-400">{c.difficulty}</td>
+                <tr key={c.id} className="border-b border-[var(--color-line)]">
+                  <td className="p-4 text-[var(--color-ink)]">{c.title}</td>
+                  <td className="p-4 text-[var(--color-ink-muted)]">{c.difficulty}</td>
                   <td className="p-4">
-                    <button onClick={() => deleteChallenge(c.id)} className="text-xs text-red-400 hover:underline">
+                    <button onClick={() => deleteChallenge(c.id)} className="text-xs text-[var(--color-red-dark)] hover:underline">
                       DELETE
                     </button>
                   </td>
                 </tr>
               ))}
               {challenges.length === 0 && (
-                <tr><td colSpan={3} className="p-6 text-center text-gray-500">No challenges yet.</td></tr>
+                <tr><td colSpan={3} className="p-6 text-center text-[var(--color-ink-muted)]">No challenges yet.</td></tr>
               )}
             </tbody>
           </table>

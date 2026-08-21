@@ -11,6 +11,7 @@ export default function ExamPassword() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
 
   useEffect(() => {
     api
@@ -31,7 +32,13 @@ export default function ExamPassword() {
       const data = await api.startExam(id, exam.has_password ? password : undefined);
       navigate(`/exams/${id}/take`, { state: data, replace: true });
     } catch (err) {
-      setError(err.message); // e.g. "Incorrect exam password."
+      // The backend enforces one attempt per student per exam and
+      // rejects with this specific message once already used.
+      if (err.message.includes("already completed this exam")) {
+        setAlreadyCompleted(true);
+      } else {
+        setError(err.message); // e.g. "Incorrect exam password."
+      }
     } finally {
       setStarting(false);
     }
@@ -43,6 +50,19 @@ export default function ExamPassword() {
 
   if (!exam) {
     return <div className="text-red-400">{error || "Exam not found."}</div>;
+  }
+
+  if (alreadyCompleted) {
+    return (
+      <div className="max-w-md mx-auto mt-10">
+        <div className="border border-gray-800 bg-[#0d1117] p-8 text-center">
+          <p className="text-cyan-400 text-xs font-mono mb-2">EXAM</p>
+          <h1 className="text-2xl font-bold text-white mb-4">{exam.title}</h1>
+          <p className="text-gray-400 mb-2">You've already completed this exam.</p>
+          <p className="text-sm text-gray-500">Only one attempt is allowed per exam.</p>
+        </div>
+      </div>
+    );
   }
 
   return (

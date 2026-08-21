@@ -11,21 +11,24 @@ import {
   getExamQuestionsForStudent,
   getExamQuestionById,
   createExamQuestion,
+  bulkCreateExamQuestions,
   updateExamQuestion,
   deleteExamQuestion,
   getActiveAttempt,
+  getCompletedAttempt,
   getAttemptById,
   createAttempt,
   markAttemptStatus,
   upsertExamAnswer,
   getAttemptAnswers,
   getAttemptCodingScore,
-  bulkCreateExamQuestions,
   listAttemptsForExam,
   getAttemptDetailForAdmin,
-  listExamAnswersForAdmin,   // <-- add this line
+  listExamAnswersForAdmin,
+  getAttemptStatusesForUser,
 } from "../models/exam.model.js";
 import { getChallengeById } from "../models/challenge.model.js";
+
 // -----------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------
@@ -60,7 +63,28 @@ async function enforceExpiry(attempt, exam) {
 export async function getExams(req, res) {
   const publishedOnly = req.user.role !== "admin";
   const exams = await listExams({ publishedOnly });
-  res.json({ exams });
+
+  if (req.user.role === "admin") {
+    return res.json({ exams });
+  }
+
+  // Attach this student's own attempt status to each exam, so the
+  // frontend can mark completed exams instead of letting the student
+  // click into one they've already finished (only to be rejected).
+  const attemptRows = await getAttemptStatusesForUser(req.user.id);
+  const attemptByExam = new Map(attemptRows.map((a) => [a.exam_id, a]));
+
+  const examsWithStatus = exams.map((exam) => {
+    const attempt = attemptByExam.get(exam.id);
+    return {
+      ...exam,
+      studentAttempt: attempt
+        ? { status: attempt.status, totalScore: attempt.total_score, maxScore: attempt.max_score }
+        : null,
+    };
+  });
+
+  res.json({ exams: examsWithStatus });
 }
 
 export async function getExamDetail(req, res) {
@@ -326,7 +350,22 @@ export async function startExam(req, res) {
     attempt = await enforceExpiry(attempt, exam);
   }
 
+    // One attempt per student per exam: once an attempt has been
+  // submitted or has expired, block starting a new one.
   if (!attempt || attempt.status !== "in_progress") {
+    const completed = await getCompletedAttempt(id, req.user.id);
+    if (completed) {
+      return res.status(403).json({
+        message: "You have already completed this exam. Only one attempt is allowed.",
+        attempt: {
+          id: completed.id,
+          status: completed.status,
+          totalScore: completed.total_score,
+          maxScore: completed.max_score,
+          submittedAt: completed.submitted_at,
+        },
+      });
+    }
     attempt = await createAttempt(id, req.user.id);
   }
 

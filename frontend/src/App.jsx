@@ -29,7 +29,7 @@ import AdminViolations from "./pages/AdminViolations";
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-[#0a0806]">
+    <div className="min-h-screen bg-[var(--color-vellum)]">
       <Navbar />
 
       <div className="flex">

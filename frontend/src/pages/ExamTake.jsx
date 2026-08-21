@@ -24,37 +24,53 @@ export default function ExamTake() {
   const [answers, setAnswers] = useState({});
   const [saved, setSaved] = useState({});
   const [error, setError] = useState("");
-  const [finished, setFinished] = useState(null);
+  const [finished, setFinished] = useState(
+    location.state?.attempt?.status && location.state.attempt.status !== "in_progress"
+      ? location.state.attempt
+      : null
+  );
   const [loading, setLoading] = useState(!location.state);
   const [monitorStatus, setMonitorStatus] = useState("checking");
 
   const pollRef = useRef(null);
   const finishingRef = useRef(false);
   const monitoringStarted = useRef(false);
-  const testSessionId = useRef(null); // proctoring session id, set once monitoring starts
+  const testSessionId = useRef(null);
 
+  // Load exam & verify attempt completion status
   useEffect(() => {
-    if (location.state) return;
+    if (location.state?.attempt) {
+      if (location.state.attempt.status !== "in_progress") {
+        setFinished(location.state.attempt);
+      }
+      setLoading(false);
+      return;
+    }
 
     api
       .startExam(id, undefined)
       .then((data) => {
         setAttempt(data.attempt);
         setExam(data.exam);
-        setQuestions(data.questions);
+        setQuestions(data.questions || []);
         setRemainingSeconds(data.attempt.remainingSeconds);
+
+        // Lock exam view if attempt is already completed or expired
+        if (data.attempt.status && data.attempt.status !== "in_progress") {
+          setFinished(data.attempt);
+        }
       })
-      .catch(() => navigate(`/exams/${id}`, { replace: true }))
+      .catch((err) => {
+        // Redirect back if attempt is forbidden or already completed
+        setError(err.message || "Failed to load exam.");
+        setTimeout(() => navigate("/exams", { replace: true }), 2000);
+      })
       .finally(() => setLoading(false));
   }, [id, location.state, navigate]);
 
-  // ===============================
-  // PROCTORING (same Electron monitor used for standalone coding
-  // challenges, now also covering the whole exam — not just the
-  // coding sub-question). Runs for the lifetime of this page.
-  // ===============================
-
+  // Check Proctoring Status (Only while active)
   useEffect(() => {
+    if (finished) return;
     let cancelled = false;
 
     async function checkMonitor() {
@@ -78,10 +94,11 @@ export default function ExamTake() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [finished]);
 
+  // Start Proctoring Monitoring
   useEffect(() => {
-    if (!attempt?.id || !exam?.title) return;
+    if (!attempt?.id || !exam?.title || finished) return;
     if (monitorStatus !== "connected" && monitorStatus !== "monitoring") return;
     if (monitoringStarted.current) return;
 
@@ -120,11 +137,9 @@ export default function ExamTake() {
     }
 
     startMonitoring();
-  }, [attempt, exam, monitorStatus]);
+  }, [attempt, exam, monitorStatus, finished]);
 
-  // Stop the Electron monitor and close out the backend proctoring
-  // session (mark it "completed" instead of leaving it "active"
-  // forever) whenever the student leaves this page for any reason.
+  // Clean up proctoring on unmount
   useEffect(() => {
     return () => {
       if (monitoringStarted.current) {
@@ -138,9 +153,6 @@ export default function ExamTake() {
     };
   }, []);
 
-  // Same cleanup, but called explicitly the moment the exam is
-  // actually submitted/expired — don't wait for unmount, since the
-  // student may sit on the "EXAM SUBMITTED" screen for a while.
   const stopProctoring = useCallback(async () => {
     if (monitoringStarted.current) {
       fetch(`${MONITOR_URL}/stop`, { method: "POST" }).catch(() => {});
@@ -169,6 +181,7 @@ export default function ExamTake() {
     }
   }, [attempt, stopProctoring]);
 
+  // Poll status
   useEffect(() => {
     if (!attempt || finished) return;
 
@@ -180,7 +193,7 @@ export default function ExamTake() {
           finishExam();
         }
       } catch {
-        // ignore transient poll failures; local countdown still runs
+        // ignore transient poll failures
       }
     }
 
@@ -189,6 +202,7 @@ export default function ExamTake() {
     return () => clearInterval(pollRef.current);
   }, [attempt, finished, finishExam]);
 
+  // Countdown timer
   useEffect(() => {
     if (remainingSeconds === null || finished) return;
     if (remainingSeconds <= 0) {
@@ -200,6 +214,7 @@ export default function ExamTake() {
   }, [remainingSeconds, finished, finishExam]);
 
   async function saveAnswer(question, value) {
+    if (finished) return;
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
     setError("");
     try {
@@ -214,30 +229,34 @@ export default function ExamTake() {
     return <div className="text-cyan-400 font-mono animate-pulse">LOADING EXAM...</div>;
   }
 
+  // EXAM COMPLETED / ATTEMPT LOCKED SCREEN
   if (finished) {
     return (
-      <div className="max-w-lg mx-auto mt-10 border border-gray-800 bg-[#0d1117] p-8 text-center">
-        <p className="text-cyan-400 text-xs font-mono mb-2">
+      <div className="max-w-lg mx-auto mt-10 border border-gray-800 bg-[#0d1117] p-8 text-center space-y-4">
+        <div className="w-16 h-16 bg-green-500/10 border border-green-500/30 text-green-400 text-3xl font-bold rounded-full flex items-center justify-center mx-auto">
+          ✓
+        </div>
+        <p className="text-cyan-400 text-xs font-mono uppercase tracking-wider">
           {finished.status === "expired" ? "TIME EXPIRED" : "EXAM SUBMITTED"}
         </p>
-        <h1 className="text-2xl font-bold text-white mb-4">{exam?.title}</h1>
-        <p className="text-gray-400 mb-6">
-          {finished.status === "expired"
-            ? "Your exam time ran out and was automatically submitted."
-            : "Your answers have been submitted."}
+        <h1 className="text-2xl font-bold text-white">{exam?.title || "Exam"}</h1>
+        <p className="text-gray-400 text-sm">
+          You have already completed this exam. Re-taking or editing answers is strictly prohibited.
         </p>
-        <p className="text-sm text-gray-500 mb-6">
-          Your instructor will review your results.
-        </p>
-        <Link to="/exams" className="text-cyan-400 underline text-sm">
-          Back to exams
-        </Link>
+        <p className="text-xs text-gray-500">Your instructor has received your submission.</p>
+        <div className="pt-2">
+          <Link
+            to="/exams"
+            className="inline-block bg-cyan-400 text-black font-bold px-6 py-2.5 hover:bg-cyan-300 text-xs font-mono transition"
+          >
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!attempt || !exam) {
-    return <div className="text-red-400">{error || "Could not load this exam attempt."}</div>;
+    return <div className="text-red-400 p-4 border border-red-500/30 bg-red-500/5">{error || "Could not load exam attempt."}</div>;
   }
 
   const lowTime = remainingSeconds !== null && remainingSeconds <= 60;
@@ -249,7 +268,11 @@ export default function ExamTake() {
           <p className="text-cyan-400 text-xs font-mono mb-1">{exam.title}</p>
           <h1 className="text-xl font-bold text-white">Time Remaining: {formatTime(remainingSeconds ?? 0)}</h1>
         </div>
-        <div className={`font-mono text-lg px-4 py-2 border ${lowTime ? "border-red-500 text-red-400 animate-pulse" : "border-cyan-400/30 text-cyan-400"}`}>
+        <div
+          className={`font-mono text-lg px-4 py-2 border ${
+            lowTime ? "border-red-500 text-red-400 animate-pulse" : "border-cyan-400/30 text-cyan-400"
+          }`}
+        >
           {formatTime(remainingSeconds ?? 0)}
         </div>
         <span
@@ -266,7 +289,7 @@ export default function ExamTake() {
         </span>
         <button
           onClick={finishExam}
-          className="bg-cyan-400 text-black font-bold px-5 py-2 hover:bg-cyan-300"
+          className="bg-cyan-400 text-black font-bold px-5 py-2 hover:bg-cyan-300 transition"
         >
           FINISH & SUBMIT
         </button>
@@ -295,7 +318,7 @@ export default function ExamTake() {
               </div>
             ) : (
               <>
-                <p className="text-white mb-3">{q.question}</p>
+                <p className="text-white mb-3 whitespace-pre-line">{q.question}</p>
 
                 {q.type === "mcq" && (
                   <div className="space-y-2">
@@ -332,7 +355,7 @@ export default function ExamTake() {
                 {q.type === "short_answer" && (
                   <input
                     type="text"
-                    className="input"
+                    className="input w-full"
                     placeholder="Your answer"
                     defaultValue={answers[q.id] || ""}
                     onBlur={(e) => saveAnswer(q, e.target.value)}

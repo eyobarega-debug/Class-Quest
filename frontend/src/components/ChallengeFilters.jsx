@@ -17,7 +17,7 @@ export default function ChallengeFilters({
           update("search", e.target.value)
         }
         placeholder="Search challenges..."
-        className="md:col-span-2 bg-[#0d1117] border border-gray-800 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+        className="input md:col-span-2"
       />
 
       <select
@@ -25,7 +25,7 @@ export default function ChallengeFilters({
         onChange={(e) =>
           update("language", e.target.value)
         }
-        className="bg-[#0d1117] border border-gray-800 px-4 py-3 text-sm text-gray-300 outline-none focus:border-cyan-400"
+        className="input"
       >
         <option value="">All Languages</option>
         <option value="javascript">JavaScript</option>
@@ -39,7 +39,7 @@ export default function ChallengeFilters({
         onChange={(e) =>
           update("difficulty", e.target.value)
         }
-        className="bg-[#0d1117] border border-gray-800 px-4 py-3 text-sm text-gray-300 outline-none focus:border-cyan-400"
+        className="input"
       >
         <option value="">All Difficulties</option>
         <option value="easy">Easy</option>

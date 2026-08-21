@@ -1,54 +1,70 @@
-import { Flame, Trophy, Target, Calendar } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import XPBar from '../components/ui/XPBar';
-import LevelBadge from '../components/ui/LevelBadge';
-import StatCard from '../components/ui/StatCard';
+import { Flame, Trophy, Target, Calendar } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import XPBar from "../components/XPBar";
+import LevelBadge from "../components/LevelBadge";
 
 export default function Profile() {
   const { user } = useAuth();
   if (!user) return null;
 
+  const xp = user.xp || 0;
+  const level = user.level || 1;
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <section className="rounded-2xl border border-border-subtle bg-surface p-6 flex flex-col sm:flex-row sm:items-center gap-5">
-        <LevelBadge level={user.level} size={72} />
+    <div className="max-w-3xl mx-auto space-y-5">
+      <section className="ledger-card p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+        <LevelBadge level={level} />
+
         <div className="flex-1 min-w-0">
-          <h1 className="font-display font-bold text-xl uppercase tracking-tight">{user.name}</h1>
-          <p className="text-text-muted text-sm font-mono">@{user.username}</p>
+          <h1 className="font-display font-bold text-xl text-[var(--color-ink)]">
+            {user.name || user.username}
+          </h1>
+          <p className="text-[var(--color-ink-muted)] text-sm font-mono">@{user.username}</p>
           <div className="mt-3 max-w-sm">
-            <XPBar
-              percent={user.xpPercent}
-              xpIntoLevel={user.xpIntoLevel}
-              xpForNextLevel={user.xpForNextLevel}
-            />
+            <XPBar xp={xp} level={level} />
           </div>
         </div>
       </section>
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={Trophy} label="Rating" value={user.rating} accent="rating" />
-        <StatCard icon={Flame} label="Streak" value={`${user.streak} days`} accent="warn" />
-        <StatCard icon={Target} label="Solved" value="0" sublabel="Arena opens Phase 2" accent="muted" />
+        <StatCard icon={Trophy} label="RATING" value={user.rating || 1000} />
+        <StatCard icon={Flame} label="STREAK" value={`${user.streak || 0} DAYS`} />
+        <StatCard icon={Target} label="SOLVED" value={user.solved_count || 0} />
         <StatCard
           icon={Calendar}
-          label="Joined"
-          value={new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-          accent="muted"
+          label="JOINED"
+          value={
+            user.createdAt || user.created_at
+              ? new Date(user.createdAt || user.created_at).toLocaleDateString(undefined, {
+                  month: "short",
+                  year: "numeric",
+                })
+              : "—"
+          }
         />
       </section>
 
-      <section className="rounded-2xl border border-border-subtle bg-surface p-6">
-        <h2 className="font-display font-semibold text-sm mb-3">Language Breakdown</h2>
-        <p className="text-sm text-text-muted">
-          Per-language solve counts (JavaScript, C++, Python, Java, HTML) will appear here once
-          the Coding Arena and submissions exist.
+      <section className="ledger-card p-6">
+        <h2 className="font-display font-semibold text-[var(--color-ink)] mb-2">Language Breakdown</h2>
+        <p className="text-sm text-[var(--color-ink-muted)]">
+          Per-language solve counts will appear here once you've submitted a few challenges.
         </p>
       </section>
 
-      <section className="rounded-2xl border border-border-subtle bg-surface p-6">
-        <h2 className="font-display font-semibold text-sm mb-3">Achievements</h2>
-        <p className="text-sm text-text-muted">No achievements unlocked yet.</p>
+      <section className="ledger-card p-6">
+        <h2 className="font-display font-semibold text-[var(--color-ink)] mb-2">Achievements</h2>
+        <p className="text-sm text-[var(--color-ink-muted)]">No achievements unlocked yet.</p>
       </section>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value }) {
+  return (
+    <div className="ledger-card p-5">
+      <Icon size={20} className="text-[var(--color-brass)] mb-4" />
+      <div className="text-xs text-[var(--color-ink-muted)] font-mono tracking-wide">{label}</div>
+      <div className="text-xl font-display font-bold text-[var(--color-ink)] mt-1">{value}</div>
     </div>
   );
 }

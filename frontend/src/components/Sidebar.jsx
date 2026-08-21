@@ -6,7 +6,7 @@ import {
   Users,
   Timer,
   ClipboardList,
-  AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -36,6 +36,11 @@ export default function Sidebar() {
       path: "/profile",
       icon: User,
     },
+    {
+      name: "Manage Challenges",
+      path: "/admin/challenges",
+      icon: Code2,
+    },
   ];
 
   if (user?.role === "admin") {
@@ -51,11 +56,6 @@ export default function Sidebar() {
         icon: Users,
       },
       {
-        name: "Manage Challenges",
-        path: "/admin/challenges",
-        icon: Code2,
-      },
-      {
         name: "Manage Exams",
         path: "/admin/exams",
         icon: Timer,
@@ -68,14 +68,14 @@ export default function Sidebar() {
       {
         name: "Violations",
         path: "/admin/violations",
-        icon: AlertTriangle,
+        icon: ShieldAlert,
       }
     );
   }
 
   return (
-    <aside className="hidden lg:block w-64 border-r border-stone-800 bg-[#0a0806] min-h-[calc(100vh-64px)]">
-      <nav className="p-4 space-y-2">
+    <aside className="hidden lg:block w-64 border-r border-[var(--color-line)] bg-[var(--color-vellum-raised)] min-h-[calc(100vh-64px)]">
+      <nav className="p-3 space-y-1">
         {links.map((link) => {
           const Icon = link.icon;
 
@@ -84,14 +84,14 @@ export default function Sidebar() {
               key={link.path}
               to={link.path}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 transition ${
+                `flex items-center gap-3 px-4 py-3 text-sm transition border-l-[3px] ${
                   isActive
-                    ? "bg-[#c9a877]/10 text-[#c9a877] border-l-2 border-[#c9a877]"
-                    : "text-stone-300 hover:bg-white/5 hover:text-white"
+                    ? "bg-[var(--color-brass)]/12 text-[var(--color-brass-dark)] border-[var(--color-brass)] font-semibold"
+                    : "text-[var(--color-ink-muted)] border-transparent hover:bg-[var(--color-vellum-deep)]/60 hover:text-[var(--color-ink)]"
                 }`
               }
             >
-              <Icon size={19} />
+              <Icon size={18} />
               {link.name}
             </NavLink>
           );

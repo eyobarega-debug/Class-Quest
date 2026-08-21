@@ -93,28 +93,28 @@ export default function AdminStudents() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">
-        STUDENT MANAGEMENT
+      <h1 className="text-3xl font-display font-bold text-[var(--color-ink)] mb-8">
+        Student Management
       </h1>
 
       <div className="grid xl:grid-cols-3 gap-6">
         {/* CREATE STUDENT */}
         <form
           onSubmit={createStudent}
-          className="border border-gray-800 bg-[#0d1117] p-6"
+          className="ledger-card p-6"
         >
-          <h2 className="text-white font-bold mb-5">
-            CREATE STUDENT
+          <h2 className="text-[var(--color-ink)] font-display font-bold mb-5">
+            Create Student
           </h2>
 
           {error && (
-            <div className="text-red-400 text-sm mb-4">
+            <div className="text-[var(--color-red-dark)] text-sm mb-4">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="text-green-400 text-sm mb-4">
+            <div className="text-[var(--color-teal-dark)] text-sm mb-4">
               {message}
             </div>
           )}
@@ -163,17 +163,17 @@ export default function AdminStudents() {
 
           <button
             type="submit"
-            className="w-full mt-4 bg-cyan-400 text-black font-bold py-3 hover:bg-cyan-300"
+            className="btn-primary w-full mt-4"
           >
             CREATE STUDENT
           </button>
         </form>
 
         {/* STUDENT LIST */}
-        <div className="xl:col-span-2 border border-gray-800 bg-[#0d1117] overflow-x-auto">
+        <div className="xl:col-span-2 ledger-card overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-800">
-              <tr className="text-left text-gray-500 font-mono text-xs">
+            <thead className="border-b border-[var(--color-line)]">
+              <tr className="text-left text-[var(--color-ink-muted)] font-mono text-xs">
                 <th className="p-4">NAME</th>
                 <th className="p-4">USERNAME</th>
                 <th className="p-4">XP</th>
@@ -187,7 +187,7 @@ export default function AdminStudents() {
                 <tr>
                   <td
                     colSpan="5"
-                    className="p-8 text-center text-gray-500"
+                    className="p-8 text-center text-[var(--color-ink-muted)]"
                   >
                     No students found.
                   </td>
@@ -196,17 +196,17 @@ export default function AdminStudents() {
                 students.map((student) => (
                   <tr
                     key={student.id}
-                    className="border-b border-gray-800"
+                    className="border-b border-[var(--color-line)]"
                   >
-                    <td className="p-4 text-white">
+                    <td className="p-4 text-[var(--color-ink)]">
                       {student.name}
                     </td>
 
-                    <td className="p-4 text-gray-400">
+                    <td className="p-4 text-[var(--color-ink-muted)]">
                       {student.username}
                     </td>
 
-                    <td className="p-4 text-cyan-400">
+                    <td className="p-4 text-[var(--color-brass-dark)] font-medium">
                       {student.xp}
                     </td>
 
@@ -214,8 +214,8 @@ export default function AdminStudents() {
                       <span
                         className={
                           student.isActive
-                            ? "text-green-400"
-                            : "text-red-400"
+                            ? "text-[var(--color-teal-dark)]"
+                            : "text-[var(--color-red-dark)]"
                         }
                       >
                         {student.isActive
@@ -230,7 +230,7 @@ export default function AdminStudents() {
                         <button
                           type="button"
                           onClick={() => toggleStudent(student)}
-                          className="text-xs border border-gray-700 px-3 py-2 text-gray-400 hover:text-white"
+                          className="text-xs border border-[var(--color-line-strong)] px-3 py-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-brass)]"
                         >
                           {student.isActive
                             ? "DISABLE"
@@ -241,7 +241,7 @@ export default function AdminStudents() {
                         <button
                           type="button"
                           onClick={() => deleteStudent(student)}
-                          className="text-xs border border-red-900 px-3 py-2 text-red-400 hover:bg-red-900 hover:text-white"
+                          className="text-xs border border-[var(--color-red)]/40 px-3 py-2 text-[var(--color-red-dark)] hover:bg-[var(--color-red)] hover:text-[var(--color-vellum)]"
                         >
                           DELETE
                         </button>

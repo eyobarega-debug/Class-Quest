@@ -43,15 +43,15 @@ export default function Challenges() {
   return (
     <div>
       <div className="mb-8">
-        <p className="text-cyan-400 text-xs font-mono mb-2">
+        <p className="text-[var(--color-brass-dark)] text-xs font-mono tracking-widest mb-2">
           SELECT YOUR MISSION
         </p>
 
-        <h1 className="text-3xl font-bold text-white">
-          CODING ARENA
+        <h1 className="text-3xl font-display font-bold text-[var(--color-ink)]">
+          Coding Arena
         </h1>
 
-        <p className="text-gray-500 mt-2">
+        <p className="text-[var(--color-ink-muted)] mt-2">
           Solve challenges. Build skill. Earn XP.
         </p>
       </div>
@@ -62,21 +62,21 @@ export default function Challenges() {
       />
 
       {error && (
-        <div className="mt-6 border border-red-500/30 bg-red-500/5 text-red-400 p-4">
+        <div className="mt-6 border border-[var(--color-red)]/30 bg-[var(--color-red)]/5 text-[var(--color-red-dark)] p-4">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="mt-10 text-center text-cyan-400 font-mono animate-pulse">
+        <div className="mt-10 text-center text-[var(--color-brass-dark)] font-mono animate-pulse">
           LOADING CHALLENGES...
         </div>
       ) : challenges.length === 0 ? (
-        <div className="mt-10 text-center border border-gray-800 p-10 text-gray-500">
+        <div className="mt-10 text-center ledger-card p-10 text-[var(--color-ink-muted)]">
           No challenges found.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-8">
           {challenges.map((challenge) => (
             <ChallengeCard
               key={challenge.id}

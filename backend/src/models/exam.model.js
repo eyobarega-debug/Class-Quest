@@ -57,6 +57,20 @@ const UPDATE_FIELD_MAP = {
   isPublished: "is_published",
 };
 
+// A student may attempt an exam exactly once. Once their attempt has
+// been submitted (or auto-expired), this returns it so startExam can
+// block any further attempts.
+export async function getCompletedAttempt(examId, userId) {
+  const result = await pool.query(
+    `SELECT * FROM exam_attempts
+     WHERE exam_id = $1 AND user_id = $2 AND status IN ('submitted', 'expired')
+     ORDER BY started_at DESC
+     LIMIT 1`,
+    [examId, userId]
+  );
+  return result.rows[0] || null;
+}
+
 // Updates ordinary exam fields. Password is changed separately via
 // updateExamPassword() so it can never be set through a generic
 // "patch this object" call by mistake.
@@ -195,6 +209,18 @@ export async function createExamQuestion({
   return result.rows[0];
 }
 
+// Every attempt a given user has made, across all exams — used to
+// mark exams "Completed" in the student's exam list so they can't
+// click back into one they already finished.
+export async function getAttemptStatusesForUser(userId) {
+  const result = await pool.query(
+    `SELECT exam_id, status, total_score, max_score
+     FROM exam_attempts
+     WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows;
+}
 // Create many questions on one exam in a single call — used by the
 // "bulk add" admin UI so a whole exam's worth of mcq/true_false/
 // short_answer/coding questions can be pasted in at once instead of

@@ -423,7 +423,7 @@ export default function ChallengeDetail() {
 
   if (loading) {
     return (
-      <div className="text-cyan-400 font-mono animate-pulse">
+      <div className="text-[var(--color-brass-dark)] font-mono animate-pulse">
         LOADING CHALLENGE...
       </div>
     );
@@ -431,7 +431,7 @@ export default function ChallengeDetail() {
 
   if (!challenge) {
     return (
-      <div className="text-red-400">
+      <div className="text-[var(--color-red)]">
         Challenge not found.
       </div>
     );
@@ -450,7 +450,7 @@ export default function ChallengeDetail() {
     <div>
 
       {examAttemptId && (
-        <div className="mb-4 border border-cyan-400/30 bg-cyan-400/5 text-cyan-400 text-sm p-3 flex items-center justify-between">
+        <div className="mb-4 border border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5 text-[var(--color-teal-dark)] text-sm p-3 flex items-center justify-between">
           <span>Answering this coding question as part of your exam.</span>
           <Link to={`/exams/${searchParams.get("examId") || ""}/take`} className="underline">
             ← Back to exam
@@ -467,15 +467,15 @@ export default function ChallengeDetail() {
 
         <div className="flex flex-wrap items-center gap-3 mb-3">
 
-          <span className="text-xs border border-green-400/30 text-green-400 px-2 py-1">
+          <span className="text-xs border border-[var(--color-teal)]/40 text-[var(--color-teal-dark)] px-2 py-1 font-mono uppercase">
             {challenge.difficulty}
           </span>
 
-          <span className="text-xs text-gray-500 font-mono">
+          <span className="text-xs text-[var(--color-ink-muted)] font-mono">
             {challenge.category}
           </span>
 
-          <span className="text-xs text-cyan-400 font-mono">
+          <span className="text-xs text-[var(--color-brass-dark)] font-mono font-medium">
             +{challenge.xp_reward ||
               challenge.xp ||
               100} XP
@@ -486,12 +486,12 @@ export default function ChallengeDetail() {
           <span
             className={`text-xs px-2 py-1 font-mono ${
               monitorStatus === "monitoring"
-                ? "text-green-400 border border-green-400/30"
+                ? "text-[var(--color-teal-dark)] border border-[var(--color-teal)]/40"
                 : monitorStatus === "connected"
-                ? "text-yellow-400 border border-yellow-400/30"
+                ? "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
                 : monitorStatus === "offline"
-                ? "text-red-400 border border-red-400/30"
-                : "text-yellow-400 border border-yellow-400/30"
+                ? "text-[var(--color-red-dark)] border border-[var(--color-red)]/40"
+                : "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
             }`}
           >
             MONITOR:{" "}
@@ -500,7 +500,7 @@ export default function ChallengeDetail() {
 
         </div>
 
-        <h1 className="text-3xl font-bold text-white">
+        <h1 className="text-3xl font-display font-bold text-[var(--color-ink)]">
           {challenge.title}
         </h1>
 
@@ -516,28 +516,28 @@ export default function ChallengeDetail() {
             PROBLEM
         =============================== */}
 
-        <section className="border border-gray-800 bg-[#0d1117]">
+        <section className="ledger-card">
 
-          <div className="p-5 border-b border-gray-800">
+          <div className="p-5 border-b border-[var(--color-line)]">
 
-            <h2 className="font-bold text-white mb-4">
-              PROBLEM
+            <h2 className="font-display font-bold text-[var(--color-ink)] mb-4">
+              Problem
             </h2>
 
-            <div className="text-sm text-gray-400 whitespace-pre-wrap leading-7">
+            <div className="text-sm text-[var(--color-ink-muted)] whitespace-pre-wrap leading-7">
               {challenge.description}
             </div>
 
           </div>
 
           {challenge.constraints && (
-            <div className="p-5 border-b border-gray-800">
+            <div className="p-5 border-b border-[var(--color-line)]">
 
-              <h3 className="text-xs text-gray-500 font-mono mb-3">
+              <h3 className="text-xs text-[var(--color-ink-muted)] font-mono tracking-wide mb-3">
                 CONSTRAINTS
               </h3>
 
-              <div className="text-sm text-gray-400 whitespace-pre-wrap">
+              <div className="text-sm text-[var(--color-ink-muted)] whitespace-pre-wrap">
                 {challenge.constraints}
               </div>
 
@@ -550,9 +550,9 @@ export default function ChallengeDetail() {
             CODE EDITOR
         =============================== */}
 
-        <section className="border border-gray-800 bg-[#0b0e13] overflow-hidden">
+        <section className="border border-[var(--color-line)] bg-[#1c1712] overflow-hidden">
 
-          <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[var(--color-line)]/30 px-4 py-3">
 
             <div className="flex gap-2">
 
@@ -570,8 +570,8 @@ export default function ChallengeDetail() {
                     }
                     className={`px-3 py-1.5 text-xs font-mono ${
                       language === lang
-                        ? "bg-cyan-400 text-black"
-                        : "bg-[#151a22] text-gray-400 hover:text-white"
+                        ? "bg-[var(--color-brass)] text-[#1c1712] font-semibold"
+                        : "bg-[#241e19] text-[#a99872] hover:text-[#f1e9dc]"
                     }`}
                   >
                     {lang}
@@ -584,7 +584,7 @@ export default function ChallengeDetail() {
 
             <button
               onClick={resetCode}
-              className="text-xs text-gray-500 hover:text-white"
+              className="text-xs text-[#93876f] hover:text-[#f1e9dc]"
             >
               RESET
             </button>
@@ -625,12 +625,12 @@ export default function ChallengeDetail() {
             }}
           />
 
-          <div className="border-t border-gray-800 p-3 flex gap-3">
+          <div className="border-t border-[var(--color-line)]/30 p-3 flex gap-3">
 
             <button
               onClick={runCode}
               disabled={running}
-              className="px-5 py-2 bg-[#151a22] border border-gray-700 text-white hover:border-cyan-400 disabled:opacity-50"
+              className="px-5 py-2 bg-[#241e19] border border-[#3a3025] text-[#f1e9dc] hover:border-[var(--color-brass)] disabled:opacity-50"
             >
               {running
                 ? "RUNNING..."
@@ -640,7 +640,7 @@ export default function ChallengeDetail() {
             <button
               onClick={submitCode}
               disabled={running}
-              className="px-5 py-2 bg-cyan-400 text-black font-bold hover:bg-cyan-300 disabled:opacity-50"
+              className="px-5 py-2 bg-[var(--color-brass)] text-[#1c1712] font-bold hover:bg-[var(--color-brass-dark)] disabled:opacity-50"
             >
               {running
                 ? "SUBMITTING..."
@@ -657,11 +657,11 @@ export default function ChallengeDetail() {
           EXECUTION RESULT
       =============================== */}
 
-      <section className="mt-5 border border-gray-800 bg-[#0d1117]">
+      <section className="mt-5 ledger-card">
 
-        <div className="px-5 py-3 border-b border-gray-800">
+        <div className="px-5 py-3 border-b border-[var(--color-line)]">
 
-          <h2 className="text-xs text-gray-500 font-mono">
+          <h2 className="text-xs text-[var(--color-ink-muted)] font-mono tracking-wide">
             EXECUTION RESULT
           </h2>
 
@@ -669,12 +669,12 @@ export default function ChallengeDetail() {
 
         <div className="p-5">
 
-                   {!result ? (
-            <p className="text-gray-600 font-mono text-sm">
+          {!result ? (
+            <p className="text-[var(--color-ink-faint)] font-mono text-sm">
               Run your code to see the result.
             </p>
           ) : result.type === "error" ? (
-            <p className="text-red-400 font-mono text-sm">
+            <p className="text-[var(--color-red)] font-mono text-sm">
               {result.message}
             </p>
           ) : (
@@ -684,12 +684,12 @@ export default function ChallengeDetail() {
                 <span
                   className={`text-sm font-mono font-bold px-3 py-1 border ${
                     result.status === "accepted"
-                      ? "text-green-400 border-green-400/30 bg-green-400/5"
+                      ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
                       : result.status
-                      ? "text-red-400 border-red-400/30 bg-red-400/5"
+                      ? "text-[var(--color-red-dark)] border-[var(--color-red)]/30 bg-[var(--color-red)]/5"
                       : result.passedCount === result.totalCount && result.totalCount > 0
-                      ? "text-green-400 border-green-400/30 bg-green-400/5"
-                      : "text-yellow-400 border-yellow-400/30 bg-yellow-400/5"
+                      ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
+                      : "text-[var(--color-brass-dark)] border-[var(--color-brass)]/30 bg-[var(--color-brass)]/5"
                   }`}
                 >
                   {result.status
@@ -697,12 +697,12 @@ export default function ChallengeDetail() {
                     : "RAN"}
                 </span>
 
-                <span className="text-sm text-gray-400 font-mono">
+                <span className="text-sm text-[var(--color-ink-muted)] font-mono">
                   {result.passedCount}/{result.totalCount} test cases passed
                 </span>
 
                 {result.xpEarned > 0 && (
-                  <span className="text-sm text-cyan-400 font-mono">
+                  <span className="text-sm text-[var(--color-brass-dark)] font-mono">
                     +{result.xpEarned} XP
                   </span>
                 )}
@@ -715,15 +715,15 @@ export default function ChallengeDetail() {
                     key={i}
                     className={`border p-3 text-sm ${
                       r.passed
-                        ? "border-green-400/20 bg-green-400/5"
-                        : "border-red-400/20 bg-red-400/5"
+                        ? "border-[var(--color-teal)]/20 bg-[var(--color-teal)]/5"
+                        : "border-[var(--color-red)]/20 bg-[var(--color-red)]/5"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`font-mono font-bold ${r.passed ? "text-green-400" : "text-red-400"}`}>
+                      <span className={`font-mono font-bold ${r.passed ? "text-[var(--color-teal-dark)]" : "text-[var(--color-red-dark)]"}`}>
                         {r.passed ? "✓ PASSED" : "✗ FAILED"} — Test {i + 1}
                       </span>
-                      <span className="text-xs text-gray-500 font-mono">
+                      <span className="text-xs text-[var(--color-ink-muted)] font-mono">
                         {r.status.replace(/_/g, " ")}
                         {r.executionTimeMs != null ? ` · ${r.executionTimeMs}ms` : ""}
                       </span>
@@ -732,18 +732,18 @@ export default function ChallengeDetail() {
                     {r.expected !== undefined && (
                       <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-xs">
                         <div>
-                          <p className="text-gray-500 mb-1">Expected</p>
-                          <pre className="text-gray-300 whitespace-pre-wrap break-all">{r.expected}</pre>
+                          <p className="text-[var(--color-ink-muted)] mb-1">Expected</p>
+                          <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">{r.expected}</pre>
                         </div>
                         <div>
-                          <p className="text-gray-500 mb-1">Your output</p>
-                          <pre className="text-gray-300 whitespace-pre-wrap break-all">{r.actual}</pre>
+                          <p className="text-[var(--color-ink-muted)] mb-1">Your output</p>
+                          <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">{r.actual}</pre>
                         </div>
                       </div>
                     )}
 
                     {r.message && (
-                      <pre className="mt-2 text-xs text-red-300 whitespace-pre-wrap break-all">{r.message}</pre>
+                      <pre className="mt-2 text-xs text-[var(--color-red-dark)] whitespace-pre-wrap break-all">{r.message}</pre>
                     )}
                   </div>
                 ))}
