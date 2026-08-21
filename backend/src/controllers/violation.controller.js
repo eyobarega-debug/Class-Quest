@@ -1,6 +1,7 @@
 import {
   createTestSession,
   getActiveTestSession,
+  getTestSessionById,
   createViolation,
   endTestSession,
   getSessionViolations,
@@ -79,45 +80,55 @@ export async function reportViolation(req, res) {
 
     if (
       !sessionId ||
-      (!challengeId && !examAttemptId) ||
       !eventType
     ) {
       return res.status(400).json({
         message:
-          "sessionId, (challengeId or examAttemptId) and eventType are required",
+          "sessionId and eventType are required",
       });
     }
 
+    // Get the actual session
     const session =
-      await getActiveTestSession({
-        userId: req.user.id,
-        challengeId,
-        examAttemptId,
-      });
+      await getTestSessionById(sessionId);
 
     if (!session) {
-      return res.status(403).json({
+      return res.status(404).json({
         message:
-          "No active test session",
+          "Test session not found",
       });
     }
 
+    // Make sure the session belongs
+    // to the logged-in student
     if (
-      Number(session.id) !==
-      Number(sessionId)
+      Number(session.user_id) !==
+      Number(req.user.id)
     ) {
       return res.status(403).json({
         message:
-          "Invalid test session",
+          "You do not own this test session",
+      });
+    }
+
+    // Make sure the session is active
+    if (session.status !== "active") {
+      return res.status(403).json({
+        message:
+          "Test session is no longer active",
       });
     }
 
     const violation =
       await createViolation({
-        sessionId,
+        sessionId: session.id,
         userId: req.user.id,
-        challengeId,
-        examAttemptId,
+        challengeId:
+          challengeId ||
+          session.challenge_id,
+        examAttemptId:
+          examAttemptId ||
+          session.exam_attempt_id,
         eventType,
         applicationName,
         windowTitle,
@@ -162,13 +173,14 @@ export async function finishTestSession(
     const session =
       await endTestSession(
         sessionId,
+        req.user.id,
         "completed"
       );
 
     if (!session) {
       return res.status(404).json({
         message:
-          "Test session not found",
+          "Active test session not found",
       });
     }
 

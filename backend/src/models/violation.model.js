@@ -25,13 +25,15 @@ export async function createTestSession({
   const result = await pool.query(
     `
     INSERT INTO test_sessions
-      (
-        user_id,
-        challenge_id,
-        exam_attempt_id
-      )
+    (
+      user_id,
+      challenge_id,
+      exam_attempt_id,
+      status,
+      violation_count
+    )
     VALUES
-      ($1, $2, $3)
+    ($1, $2, $3, 'active', 0)
     RETURNING *
     `,
     [
@@ -84,6 +86,24 @@ export async function getActiveTestSession({
 }
 
 // ==========================================
+// GET SESSION BY ID
+// ==========================================
+
+export async function getTestSessionById(sessionId) {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM test_sessions
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [sessionId]
+  );
+
+  return result.rows[0] || null;
+}
+
+// ==========================================
 // CREATE VIOLATION
 // ==========================================
 
@@ -98,62 +118,58 @@ export async function createViolation({
   details,
 }) {
   const severity =
-    EVENT_SEVERITIES[eventType] ||
-    "medium";
+    EVENT_SEVERITIES[eventType] || "medium";
 
-  const client =
-    await pool.connect();
+  const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    const violationResult =
-      await client.query(
-        `
-        INSERT INTO test_violations
-        (
-          session_id,
-          user_id,
-          challenge_id,
-          exam_attempt_id,
-          event_type,
-          severity,
-          application_name,
-          window_title,
-          details
-        )
-        VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6,
-          $7,
-          $8,
-          $9
-        )
-        RETURNING *
-        `,
-        [
-          sessionId,
-          userId,
-          challengeId || null,
-          examAttemptId || null,
-          eventType,
-          severity,
-          applicationName || null,
-          windowTitle || null,
-          details || {},
-        ]
-      );
+    const violationResult = await client.query(
+      `
+      INSERT INTO test_violations
+      (
+        session_id,
+        user_id,
+        challenge_id,
+        exam_attempt_id,
+        event_type,
+        severity,
+        application_name,
+        window_title,
+        details
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+      )
+      RETURNING *
+      `,
+      [
+        sessionId,
+        userId,
+        challengeId || null,
+        examAttemptId || null,
+        eventType,
+        severity,
+        applicationName || null,
+        windowTitle || null,
+        details || {},
+      ]
+    );
 
     await client.query(
       `
       UPDATE test_sessions
-      SET violation_count =
-        violation_count + 1
+      SET violation_count = violation_count + 1
       WHERE id = $1
       `,
       [sessionId]
@@ -164,7 +180,6 @@ export async function createViolation({
     return violationResult.rows[0];
   } catch (error) {
     await client.query("ROLLBACK");
-
     throw error;
   } finally {
     client.release();
@@ -177,6 +192,7 @@ export async function createViolation({
 
 export async function endTestSession(
   sessionId,
+  userId,
   status = "completed"
 ) {
   const result = await pool.query(
@@ -186,11 +202,14 @@ export async function endTestSession(
       status = $1,
       ended_at = NOW()
     WHERE id = $2
+      AND user_id = $3
+      AND status = 'active'
     RETURNING *
     `,
     [
       status,
       sessionId,
+      userId,
     ]
   );
 

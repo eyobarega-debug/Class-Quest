@@ -1,17 +1,34 @@
 {
-  "name": "monitor",
+  "name": "classquest-monitor",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "ClassQuest Exam Monitoring Application",
+  "main": "main.js",
   "scripts": {
-  "start": "electron main.js"
-},
+    "start": "electron main.js",
+    "dist": "electron-builder --win"
+  },
   "keywords": [],
-  "author": "",
+  "author": "ClassQuest",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "electron": "^43.4.0",
     "get-windows": "^9.3.0"
+  },
+  "devDependencies": {
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.classquest.monitor",
+    "productName": "ClassQuest Monitor",
+    "files": [
+      "main.js",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "ClassQuest-Monitor-Setup.${ext}"
+    }
   }
 }
