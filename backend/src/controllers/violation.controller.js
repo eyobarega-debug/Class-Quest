@@ -7,25 +7,30 @@ import {
   getRecentViolations,
 } from "../models/violation.model.js";
 
+// ===============================
+// STUDENT: START SESSION
+// ===============================
 
-// STUDENT: Start a monitoring session, for either a standalone
-// coding challenge or an exam (identified by the student's exam_attempt_id).
 export async function startTestSession(req, res) {
   try {
-    const { challengeId, examAttemptId } = req.body;
+    const {
+      challengeId,
+      examAttemptId,
+    } = req.body;
 
     if (!challengeId && !examAttemptId) {
       return res.status(400).json({
-        message: "challengeId or examAttemptId is required",
+        message:
+          "challengeId or examAttemptId is required",
       });
     }
 
-    // Prevent multiple active sessions
-    const existing = await getActiveTestSession({
-      userId: req.user.id,
-      challengeId,
-      examAttemptId,
-    });
+    const existing =
+      await getActiveTestSession({
+        userId: req.user.id,
+        challengeId,
+        examAttemptId,
+      });
 
     if (existing) {
       return res.json({
@@ -33,28 +38,37 @@ export async function startTestSession(req, res) {
       });
     }
 
-    const session = await createTestSession({
-      userId: req.user.id,
-      challengeId,
-      examAttemptId,
-    });
+    const session =
+      await createTestSession({
+        userId: req.user.id,
+        challengeId,
+        examAttemptId,
+      });
 
-    res.status(201).json({
+    return res.status(201).json({
       session,
     });
   } catch (error) {
-    console.error("START TEST SESSION ERROR:", error);
+    console.error(
+      "START TEST SESSION ERROR:",
+      error
+    );
 
-    res.status(500).json({
-      message: "Failed to start test session",
+    return res.status(500).json({
+      message:
+        "Failed to start test session",
     });
   }
 }
 
+// ===============================
+// STUDENT: REPORT VIOLATION
+// ===============================
 
-// STUDENT: Report a violation, for either a standalone coding
-// challenge session or an exam session (via examAttemptId).
-export async function reportViolation(req, res) {
+export async function reportViolation(
+  req,
+  res
+) {
   try {
     const {
       sessionId,
@@ -66,94 +80,123 @@ export async function reportViolation(req, res) {
       details,
     } = req.body;
 
-    if (!sessionId || (!challengeId && !examAttemptId) || !eventType) {
+    if (
+      !sessionId ||
+      (!challengeId && !examAttemptId) ||
+      !eventType
+    ) {
       return res.status(400).json({
         message:
           "sessionId, (challengeId or examAttemptId) and eventType are required",
       });
     }
 
-    // Make sure the session belongs to this student
-    const session = await getActiveTestSession({
-      userId: req.user.id,
-      challengeId,
-      examAttemptId,
-    });
+    const session =
+      await getActiveTestSession({
+        userId: req.user.id,
+        challengeId,
+        examAttemptId,
+      });
 
     if (!session) {
       return res.status(403).json({
-        message: "No active test session",
+        message:
+          "No active test session",
       });
     }
 
-    if (Number(session.id) !== Number(sessionId)) {
+    if (
+      Number(session.id) !==
+      Number(sessionId)
+    ) {
       return res.status(403).json({
-        message: "Invalid test session",
+        message:
+          "Invalid test session",
       });
     }
 
-    const violation = await createViolation({
-      sessionId,
-      userId: req.user.id,
-      challengeId,
-      examAttemptId,
-      eventType,
-      applicationName,
-      windowTitle,
-      details,
-    });
+    const violation =
+      await createViolation({
+        sessionId,
+        userId: req.user.id,
+        challengeId,
+        examAttemptId,
+        eventType,
+        applicationName,
+        windowTitle,
+        details,
+      });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Violation recorded",
       violation,
     });
   } catch (error) {
-    console.error("REPORT VIOLATION ERROR:", error);
+    console.error(
+      "REPORT VIOLATION ERROR:",
+      error
+    );
 
-    res.status(500).json({
-      message: "Failed to record violation",
+    return res.status(500).json({
+      message:
+        "Failed to record violation",
     });
   }
 }
 
+// ===============================
+// STUDENT: FINISH SESSION
+// ===============================
 
-// STUDENT: End test session
-export async function finishTestSession(req, res) {
+export async function finishTestSession(
+  req,
+  res
+) {
   try {
     const { sessionId } = req.body;
 
     if (!sessionId) {
       return res.status(400).json({
-        message: "sessionId is required",
+        message:
+          "sessionId is required",
       });
     }
 
-    const session = await endTestSession(
-      sessionId,
-      "completed"
-    );
+    const session =
+      await endTestSession(
+        sessionId,
+        "completed"
+      );
 
     if (!session) {
       return res.status(404).json({
-        message: "Test session not found",
+        message:
+          "Test session not found",
       });
     }
 
-    res.json({
-      message: "Test session completed",
+    return res.json({
+      message:
+        "Test session completed",
       session,
     });
   } catch (error) {
-    console.error("FINISH TEST SESSION ERROR:", error);
+    console.error(
+      "FINISH TEST SESSION ERROR:",
+      error
+    );
 
-    res.status(500).json({
-      message: "Failed to finish test session",
+    return res.status(500).json({
+      message:
+        "Failed to finish test session",
     });
   }
 }
 
+// ===============================
+// ADMIN: SESSION VIOLATIONS
+// ===============================
 
-// ADMIN: Get violations for a session
 export async function getViolationsForSession(
   req,
   res
@@ -162,9 +205,11 @@ export async function getViolationsForSession(
     const { sessionId } = req.params;
 
     const violations =
-      await getSessionViolations(sessionId);
+      await getSessionViolations(
+        sessionId
+      );
 
-    res.json({
+    return res.json({
       violations,
     });
   } catch (error) {
@@ -173,15 +218,21 @@ export async function getViolationsForSession(
       error
     );
 
-    res.status(500).json({
-      message: "Failed to get violations",
+    return res.status(500).json({
+      message:
+        "Failed to get violations",
     });
   }
 }
 
+// ===============================
+// ADMIN: ALL VIOLATIONS
+// ===============================
 
-// ADMIN: Get recent violations
-export async function getViolations(req, res) {
+export async function getViolations(
+  req,
+  res
+) {
   try {
     const limit = Math.min(
       Number(req.query.limit) || 100,
@@ -197,7 +248,7 @@ export async function getViolations(req, res) {
         offset,
       });
 
-    res.json({
+    return res.json({
       violations,
     });
   } catch (error) {
@@ -206,8 +257,9 @@ export async function getViolations(req, res) {
       error
     );
 
-    res.status(500).json({
-      message: "Failed to get violations",
+    return res.status(500).json({
+      message:
+        "Failed to get violations",
     });
   }
 }

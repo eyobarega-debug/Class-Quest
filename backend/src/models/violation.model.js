@@ -13,11 +13,10 @@ const EVENT_SEVERITIES = {
   UNKNOWN_APPLICATION: "high",
 };
 
+// ===============================
+// CREATE TEST SESSION
+// ===============================
 
-// Create a test monitoring session. Exactly one of challengeId /
-// examAttemptId is expected (a standalone coding challenge, or an
-// exam — including the coding sub-question inside an exam, which
-// still passes challengeId here, unchanged from before).
 export async function createTestSession({
   userId,
   challengeId,
@@ -26,18 +25,28 @@ export async function createTestSession({
   const result = await pool.query(
     `
     INSERT INTO test_sessions
-      (user_id, challenge_id, exam_attempt_id)
+      (
+        user_id,
+        challenge_id,
+        exam_attempt_id
+      )
     VALUES ($1, $2, $3)
     RETURNING *
     `,
-    [userId, challengeId || null, examAttemptId || null]
+    [
+      userId,
+      challengeId || null,
+      examAttemptId || null,
+    ]
   );
 
   return result.rows[0];
 }
 
+// ===============================
+// GET ACTIVE SESSION
+// ===============================
 
-// Get active session for a student, for either a challenge or an exam attempt.
 export async function getActiveTestSession({
   userId,
   challengeId,
@@ -50,20 +59,33 @@ export async function getActiveTestSession({
     WHERE user_id = $1
       AND status = 'active'
       AND (
-        ($2::INTEGER IS NOT NULL AND challenge_id = $2)
-        OR ($3::BIGINT IS NOT NULL AND exam_attempt_id = $3)
+        (
+          $2::INTEGER IS NOT NULL
+          AND challenge_id = $2
+        )
+        OR
+        (
+          $3::BIGINT IS NOT NULL
+          AND exam_attempt_id = $3
+        )
       )
     ORDER BY started_at DESC
     LIMIT 1
     `,
-    [userId, challengeId || null, examAttemptId || null]
+    [
+      userId,
+      challengeId || null,
+      examAttemptId || null,
+    ]
   );
 
   return result.rows[0] || null;
 }
 
+// ===============================
+// CREATE VIOLATION
+// ===============================
 
-// Record a violation
 export async function createViolation({
   sessionId,
   userId,
@@ -75,16 +97,19 @@ export async function createViolation({
   details,
 }) {
   const severity =
-    EVENT_SEVERITIES[eventType] || "medium";
+    EVENT_SEVERITIES[eventType] ||
+    "medium";
 
-  const client = await pool.connect();
+  const client =
+    await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    const violationResult = await client.query(
-      `
-      INSERT INTO test_violations
+    const violationResult =
+      await client.query(
+        `
+        INSERT INTO test_violations
         (
           session_id,
           user_id,
@@ -96,27 +121,38 @@ export async function createViolation({
           window_title,
           details
         )
-      VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      RETURNING *
-      `,
-      [
-        sessionId,
-        userId,
-        challengeId || null,
-        examAttemptId || null,
-        eventType,
-        severity,
-        applicationName || null,
-        windowTitle || null,
-        details || {},
-      ]
-    );
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9
+        )
+        RETURNING *
+        `,
+        [
+          sessionId,
+          userId,
+          challengeId || null,
+          examAttemptId || null,
+          eventType,
+          severity,
+          applicationName || null,
+          windowTitle || null,
+          details || {},
+        ]
+      );
 
     await client.query(
       `
       UPDATE test_sessions
-      SET violation_count = violation_count + 1
+      SET violation_count =
+        violation_count + 1
       WHERE id = $1
       `,
       [sessionId]
@@ -125,7 +161,6 @@ export async function createViolation({
     await client.query("COMMIT");
 
     return violationResult.rows[0];
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -134,8 +169,10 @@ export async function createViolation({
   }
 }
 
+// ===============================
+// END TEST SESSION
+// ===============================
 
-// End a test session
 export async function endTestSession(
   sessionId,
   status = "completed"
@@ -155,10 +192,10 @@ export async function endTestSession(
   return result.rows[0] || null;
 }
 
+// ===============================
+// SESSION VIOLATIONS
+// ===============================
 
-// Get violations for one session. challenge_title falls back to the
-// exam's title (prefixed) when this violation happened during an
-// exam rather than a standalone challenge.
 export async function getSessionViolations(
   sessionId
 ) {
@@ -167,7 +204,10 @@ export async function getSessionViolations(
     SELECT
       tv.*,
       u.username,
-      COALESCE(c.title, 'Exam: ' || e.title) AS challenge_title
+      COALESCE(
+        c.title,
+        'Exam: ' || e.title
+      ) AS challenge_title
     FROM test_violations tv
     JOIN users u
       ON u.id = tv.user_id
@@ -186,8 +226,10 @@ export async function getSessionViolations(
   return result.rows;
 }
 
+// ===============================
+// RECENT VIOLATIONS
+// ===============================
 
-// Admin: get recent violations (across both challenge and exam sessions)
 export async function getRecentViolations({
   limit = 100,
   offset = 0,
@@ -197,7 +239,10 @@ export async function getRecentViolations({
     SELECT
       tv.*,
       u.username,
-      COALESCE(c.title, 'Exam: ' || e.title) AS challenge_title
+      COALESCE(
+        c.title,
+        'Exam: ' || e.title
+      ) AS challenge_title
     FROM test_violations tv
     JOIN users u
       ON u.id = tv.user_id
@@ -208,7 +253,8 @@ export async function getRecentViolations({
     LEFT JOIN exams e
       ON e.id = ea.exam_id
     ORDER BY tv.created_at DESC
-    LIMIT $1 OFFSET $2
+    LIMIT $1
+    OFFSET $2
     `,
     [limit, offset]
   );

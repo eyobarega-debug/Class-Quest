@@ -1,10 +1,12 @@
 import axios from "axios";
 
-export const API_BASE_URL = "https://classquest-backend.onrender.com/api";
+export const API_BASE_URL =
+  "https://classquest-backend.onrender.com/api";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
 });
+
 // ===============================
 // AUTH TOKEN
 // ===============================
@@ -34,7 +36,6 @@ client.interceptors.response.use(
     return Promise.reject(new Error(message));
   }
 );
-
 
 // ===============================
 // API
@@ -81,7 +82,6 @@ export const api = {
 
   students: async () => {
     const res = await client.get("/users");
-
     return res.data.students;
   },
 
@@ -115,7 +115,7 @@ export const api = {
   },
 
   // ===============================
-  // CHALLENGES & QUESTIONS
+  // CHALLENGES
   // ===============================
 
   challenges: async (filters = {}) => {
@@ -213,22 +213,36 @@ export const api = {
   },
 
   // ===============================
-  // ADMIN: WHAT STUDENTS HAVE SUBMITTED
+  // ADMIN SUBMISSIONS
   // ===============================
 
-  // Every coding submission across all students (source code + score
-  // "out of" the test cases, not XP). Optional filters.
-  adminSubmissions: async ({ studentId, challengeId } = {}) => {
+  adminSubmissions: async ({
+    studentId,
+    challengeId,
+  } = {}) => {
     const params = {};
-    if (studentId) params.studentId = studentId;
-    if (challengeId) params.challengeId = challengeId;
 
-    const res = await client.get("/challenges/submissions", { params });
+    if (studentId) {
+      params.studentId = studentId;
+    }
+
+    if (challengeId) {
+      params.challengeId = challengeId;
+    }
+
+    const res = await client.get(
+      "/challenges/submissions",
+      { params }
+    );
+
     return res.data.submissions;
   },
 
   adminSubmissionDetail: async (id) => {
-    const res = await client.get(`/challenges/submissions/${id}`);
+    const res = await client.get(
+      `/challenges/submissions/${id}`
+    );
+
     return res.data.submission;
   },
 
@@ -236,14 +250,16 @@ export const api = {
   // VIOLATION MONITORING
   // ===============================
 
-    // Start a monitoring session. Accepts either a plain challengeId
-  // (existing standalone-challenge behavior, unchanged) or
-  // { challengeId, examAttemptId } for an exam session.
-  startTestSession: async (challengeIdOrOptions) => {
+  startTestSession: async (
+    challengeIdOrOptions
+  ) => {
     const body =
-      typeof challengeIdOrOptions === "object" && challengeIdOrOptions !== null
+      typeof challengeIdOrOptions === "object" &&
+      challengeIdOrOptions !== null
         ? challengeIdOrOptions
-        : { challengeId: challengeIdOrOptions };
+        : {
+            challengeId: challengeIdOrOptions,
+          };
 
     const res = await client.post(
       "/violations/sessions/start",
@@ -310,7 +326,6 @@ export const api = {
     return res.data.violations;
   },
 
-    // Get violations for one session
   sessionViolations: async (sessionId) => {
     const res = await client.get(
       `/violations/session/${sessionId}`
@@ -329,32 +344,63 @@ export const api = {
   },
 
   exam: async (id) => {
-    const res = await client.get(`/exams/${id}`);
-    return res.data; // { exam, questions? }
+    const res = await client.get(
+      `/exams/${id}`
+    );
+
+    return res.data;
   },
 
-  createExam: async ({ title, description, durationMinutes, password }) => {
-    const res = await client.post("/exams", {
-      title,
-      description,
-      durationMinutes,
-      password,
-    });
+  createExam: async ({
+    title,
+    description,
+    durationMinutes,
+    password,
+  }) => {
+    const res = await client.post(
+      "/exams",
+      {
+        title,
+        description,
+        durationMinutes,
+        password,
+      }
+    );
+
     return res.data.exam;
   },
 
-  updateExam: async (id, { title, description, durationMinutes, isPublished }) => {
-    const res = await client.patch(`/exams/${id}`, {
+  updateExam: async (
+    id,
+    {
       title,
       description,
       durationMinutes,
       isPublished,
-    });
+    }
+  ) => {
+    const res = await client.patch(
+      `/exams/${id}`,
+      {
+        title,
+        description,
+        durationMinutes,
+        isPublished,
+      }
+    );
+
     return res.data.exam;
   },
 
-  changeExamPassword: async (id, password) => {
-    const res = await client.patch(`/exams/${id}/password`, { password });
+  changeExamPassword: async (
+    id,
+    password
+  ) => {
+    const res = await client.patch(
+      `/exams/${id}/password`,
+      { password }
+    );
+
     return res.data.exam;
   },
 
@@ -362,83 +408,153 @@ export const api = {
     await client.delete(`/exams/${id}`);
   },
 
-  createExamQuestion: async (examId, payload) => {
-    const res = await client.post(`/exams/${examId}/questions`, payload);
+  createExamQuestion: async (
+    examId,
+    payload
+  ) => {
+    const res = await client.post(
+      `/exams/${examId}/questions`,
+      payload
+    );
+
     return res.data.question;
   },
 
-  // Bulk import: create many questions on one exam in a single call
-  // (e.g. paste a whole exam's worth of mcq/true_false/short_answer/
-  // coding questions at once).
-  createExamQuestionsBulk: async (examId, questions) => {
-    const res = await client.post(`/exams/${examId}/questions/bulk`, { questions });
+  createExamQuestionsBulk: async (
+    examId,
+    questions
+  ) => {
+    const res = await client.post(
+      `/exams/${examId}/questions/bulk`,
+      { questions }
+    );
+
     return res.data.questions;
   },
 
-  updateExamQuestion: async (examId, questionId, payload) => {
-    const res = await client.patch(`/exams/${examId}/questions/${questionId}`, payload);
+  updateExamQuestion: async (
+    examId,
+    questionId,
+    payload
+  ) => {
+    const res = await client.patch(
+      `/exams/${examId}/questions/${questionId}`,
+      payload
+    );
+
     return res.data.question;
   },
 
-  deleteExamQuestion: async (examId, questionId) => {
-    await client.delete(`/exams/${examId}/questions/${questionId}`);
+  deleteExamQuestion: async (
+    examId,
+    questionId
+  ) => {
+    await client.delete(
+      `/exams/${examId}/questions/${questionId}`
+    );
   },
 
-  // Student flow: verify password -> start -> answer -> finish.
-  // The password is only ever sent over these two calls, never stored.
+  verifyExamPassword: async (
+    examId,
+    password
+  ) => {
+    const res = await client.post(
+      `/exams/${examId}/verify-password`,
+      { password }
+    );
 
-  verifyExamPassword: async (examId, password) => {
-    const res = await client.post(`/exams/${examId}/verify-password`, { password });
     return res.data;
   },
 
-  startExam: async (examId, password) => {
-    const res = await client.post(`/exams/${examId}/start`, { password });
-    return res.data; // { attempt, exam, questions }
+  startExam: async (
+    examId,
+    password
+  ) => {
+    const res = await client.post(
+      `/exams/${examId}/start`,
+      { password }
+    );
+
+    return res.data;
   },
 
-  examAttemptStatus: async (attemptId) => {
-    const res = await client.get(`/exams/attempts/${attemptId}`);
+  examAttemptStatus: async (
+    attemptId
+  ) => {
+    const res = await client.get(
+      `/exams/attempts/${attemptId}`
+    );
+
     return res.data.attempt;
   },
 
-  answerExamQuestion: async (attemptId, questionId, answer) => {
-    const res = await client.post(`/exams/attempts/${attemptId}/answers`, {
-      questionId,
-      answer,
-    });
+  answerExamQuestion: async (
+    attemptId,
+    questionId,
+    answer
+  ) => {
+    const res = await client.post(
+      `/exams/attempts/${attemptId}/answers`,
+      {
+        questionId,
+        answer,
+      }
+    );
+
     return res.data;
   },
 
   finishExam: async (attemptId) => {
-    const res = await client.post(`/exams/attempts/${attemptId}/finish`);
+    const res = await client.post(
+      `/exams/attempts/${attemptId}/finish`
+    );
+
     return res.data.attempt;
   },
 
   // ===============================
-  // ADMIN: WHAT STUDENTS HAVE DONE ON AN EXAM
+  // ADMIN EXAM DATA
   // ===============================
 
   examAttempts: async (examId) => {
-    const res = await client.get(`/exams/${examId}/attempts`);
+    const res = await client.get(
+      `/exams/${examId}/attempts`
+    );
+
     return res.data.attempts;
   },
 
-  examAttemptDetail: async (attemptId) => {
-    const res = await client.get(`/exams/attempts/${attemptId}/admin`);
-    return res.data; // { attempt, questions }
+  examAttemptDetail: async (
+    attemptId
+  ) => {
+    const res = await client.get(
+      `/exams/attempts/${attemptId}/admin`
+    );
+
+    return res.data;
   },
 
-  // Flat feed of every MCQ/True-False/Short-Answer answer across every
-// exam and every student — powers the "Submissions" dashboard.
-examAnswers: async ({ studentId, examId } = {}) => {
-  const params = {};
-  if (studentId) params.studentId = studentId;
-  if (examId) params.examId = examId;
+  examAnswers: async ({
+    studentId,
+    examId,
+  } = {}) => {
+    const params = {};
 
-  const res = await client.get("/exams/answers", { params });
-  return res.data.answers;
-},
+    if (studentId) {
+      params.studentId = studentId;
+    }
+
+    if (examId) {
+      params.examId = examId;
+    }
+
+    const res = await client.get(
+      "/exams/answers",
+      { params }
+    );
+
+    return res.data.answers;
+  },
 };
 
 export default client;

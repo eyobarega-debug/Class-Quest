@@ -4,97 +4,151 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+
+import {
+  useParams,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
+
 import Editor from "@monaco-editor/react";
 
-import { api } from "../services/api";
+import {
+  api,
+  API_BASE_URL,
+} from "../services/api";
 
 const languageConfig = {
-  javascript: { monaco: "javascript" },
-  js: { monaco: "javascript" },
-  cpp: { monaco: "cpp" },
-  "c++": { monaco: "cpp" },
-  python: { monaco: "python" },
-  java: { monaco: "java" },
+  javascript: {
+    monaco: "javascript",
+  },
+
+  js: {
+    monaco: "javascript",
+  },
+
+  cpp: {
+    monaco: "cpp",
+  },
+
+  "c++": {
+    monaco: "cpp",
+  },
+
+  python: {
+    monaco: "python",
+  },
+
+  java: {
+    monaco: "java",
+  },
 };
 
-const MONITOR_URL = "http://127.0.0.1:3847";
+const MONITOR_URL =
+  "http://127.0.0.1:3847";
 
 export default function ChallengeDetail() {
-   const { slug } = useParams();
+  const { slug } = useParams();
 
-  // Optional: present only when this coding question is being
-  // answered as part of a timed exam (linked from ExamTake.jsx).
-  // Does not affect the page at all when absent.
-  const [searchParams] = useSearchParams();
-  const examAttemptId = searchParams.get("examAttemptId");
+  const [searchParams] =
+    useSearchParams();
+
+  const examAttemptId =
+    searchParams.get(
+      "examAttemptId"
+    );
 
   // ===============================
   // STATE
   // ===============================
-  const [challenge, setChallenge] = useState(null);
-  const [language, setLanguage] = useState("javascript");
-  const [code, setCode] = useState("");
 
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
+  const [challenge, setChallenge] =
+    useState(null);
 
-  const [testSession, setTestSession] = useState(null);
+  const [language, setLanguage] =
+    useState("javascript");
+
+  const [code, setCode] =
+    useState("");
+
+  const [result, setResult] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [running, setRunning] =
+    useState(false);
+
+  const [testSession, setTestSession] =
+    useState(null);
+
   const [monitorStatus, setMonitorStatus] =
     useState("checking");
 
-  const monitoringStarted = useRef(false);
+  const monitoringStarted =
+    useRef(false);
 
   // ===============================
   // LOAD CHALLENGE
   // ===============================
 
-  const loadChallenge = useCallback(async () => {
-    setLoading(true);
+  const loadChallenge =
+    useCallback(async () => {
+      setLoading(true);
 
-    try {
-      const data = await api.challenge(slug);
+      try {
+        const data =
+          await api.challenge(
+            slug
+          );
 
-      const item = data.challenge || data;
+        const item =
+          data.challenge ||
+          data;
 
-      setChallenge(item);
+        setChallenge(item);
 
-      const languages =
-        item.languages ||
-        item.challenge_languages ||
-        [];
+        const languages =
+          item.languages ||
+          item.challenge_languages ||
+          [];
 
-      if (languages.length > 0) {
-        const first = languages[0];
+        if (
+          languages.length > 0
+        ) {
+          const first =
+            languages[0];
 
-        const firstLanguage =
-          first.language ||
-          first.language_name ||
-          "javascript";
+          const firstLanguage =
+            first.language ||
+            first.language_name ||
+            "javascript";
 
-        setLanguage(firstLanguage);
+          setLanguage(
+            firstLanguage
+          );
 
-        setCode(
-          first.starter_code ||
-            first.code ||
-            ""
+          setCode(
+            first.starter_code ||
+              first.code ||
+              ""
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Failed to load challenge:",
+          err
         );
-      }
-    } catch (err) {
-      console.error(
-        "Failed to load challenge:",
-        err
-      );
 
-      setResult({
-        type: "error",
-        message: err.message,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [slug]);
+        setResult({
+          type: "error",
+          message: err.message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }, [slug]);
 
   useEffect(() => {
     loadChallenge();
@@ -109,28 +163,36 @@ export default function ChallengeDetail() {
 
     async function checkMonitor() {
       try {
-        const response = await fetch(
-          `${MONITOR_URL}/status`
-        );
+        const response =
+          await fetch(
+            `${MONITOR_URL}/status`
+          );
 
         if (!response.ok) {
           if (!cancelled) {
-            setMonitorStatus("offline");
+            setMonitorStatus(
+              "offline"
+            );
           }
 
           return;
         }
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
         if (cancelled) {
           return;
         }
 
         if (data.monitoring) {
-          setMonitorStatus("monitoring");
+          setMonitorStatus(
+            "monitoring"
+          );
         } else {
-          setMonitorStatus("connected");
+          setMonitorStatus(
+            "connected"
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -139,21 +201,26 @@ export default function ChallengeDetail() {
             error
           );
 
-          setMonitorStatus("offline");
+          setMonitorStatus(
+            "offline"
+          );
         }
       }
     }
 
     checkMonitor();
 
-    const interval = setInterval(
-      checkMonitor,
-      3000
-    );
+    const interval =
+      setInterval(
+        checkMonitor,
+        3000
+      );
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearInterval(
+        interval
+      );
     };
   }, []);
 
@@ -167,13 +234,17 @@ export default function ChallengeDetail() {
     }
 
     if (
-      monitorStatus !== "connected" &&
-      monitorStatus !== "monitoring"
+      monitorStatus !==
+        "connected" &&
+      monitorStatus !==
+        "monitoring"
     ) {
       return;
     }
 
-    if (monitoringStarted.current) {
+    if (
+      monitoringStarted.current
+    ) {
       return;
     }
 
@@ -192,9 +263,9 @@ export default function ChallengeDetail() {
           return;
         }
 
-        // --------------------------------
-        // Create / get database session
-        // --------------------------------
+        // ===============================
+        // CREATE DATABASE SESSION
+        // ===============================
 
         const data =
           await api.startTestSession(
@@ -206,19 +277,24 @@ export default function ChallengeDetail() {
           data
         );
 
-        if (!data?.session?.id) {
+        if (
+          !data?.session?.id
+        ) {
           throw new Error(
             "Test session was not created."
           );
         }
 
-        const session = data.session;
+        const session =
+          data.session;
 
-        setTestSession(session);
+        setTestSession(
+          session
+        );
 
-        // --------------------------------
-        // Start Electron monitor
-        // --------------------------------
+        // ===============================
+        // START ELECTRON MONITOR
+        // ===============================
 
         const monitorResponse =
           await fetch(
@@ -232,14 +308,22 @@ export default function ChallengeDetail() {
               },
 
               body: JSON.stringify({
-                sessionId: session.id,
+                sessionId:
+                  session.id,
 
-                challengeId: challenge.id,
+                challengeId:
+                  challenge.id,
+
+                examAttemptId:
+                  examAttemptId ||
+                  undefined,
 
                 token,
 
-                // The monitor uses this
-                // to identify the ClassQuest page.
+                // ⭐ IMPORTANT FIX
+                apiBaseUrl:
+                  API_BASE_URL,
+
                 allowedTitle:
                   challenge.title ||
                   "ClassQuest",
@@ -250,16 +334,21 @@ export default function ChallengeDetail() {
         const monitorData =
           await monitorResponse.json();
 
-        if (!monitorResponse.ok) {
+        if (
+          !monitorResponse.ok
+        ) {
           throw new Error(
             monitorData.message ||
               "Failed to start Electron monitor."
           );
         }
 
-        monitoringStarted.current = true;
+        monitoringStarted.current =
+          true;
 
-        setMonitorStatus("monitoring");
+        setMonitorStatus(
+          "monitoring"
+        );
 
         console.log(
           "================================"
@@ -277,6 +366,11 @@ export default function ChallengeDetail() {
         console.log(
           "Challenge:",
           challenge.id
+        );
+
+        console.log(
+          "API:",
+          API_BASE_URL
         );
 
         console.log(
@@ -298,12 +392,18 @@ export default function ChallengeDetail() {
           error
         );
 
-        setMonitorStatus("offline");
+        setMonitorStatus(
+          "offline"
+        );
       }
     }
 
     startMonitoring();
-  }, [challenge, monitorStatus]);
+  }, [
+    challenge,
+    monitorStatus,
+    examAttemptId,
+  ]);
 
   // ===============================
   // STOP MONITOR
@@ -311,15 +411,21 @@ export default function ChallengeDetail() {
 
   useEffect(() => {
     return () => {
-      if (!monitoringStarted.current) {
+      if (
+        !monitoringStarted.current
+      ) {
         return;
       }
 
-      fetch(`${MONITOR_URL}/stop`, {
-        method: "POST",
-      }).catch(() => {});
+      fetch(
+        `${MONITOR_URL}/stop`,
+        {
+          method: "POST",
+        }
+      ).catch(() => {});
 
-      monitoringStarted.current = false;
+      monitoringStarted.current =
+        false;
 
       console.log(
         "ClassQuest monitor stopped."
@@ -331,20 +437,26 @@ export default function ChallengeDetail() {
   // LANGUAGE
   // ===============================
 
-  function changeLanguage(newLanguage) {
-    setLanguage(newLanguage);
+  function changeLanguage(
+    newLanguage
+  ) {
+    setLanguage(
+      newLanguage
+    );
 
     const languages =
       challenge?.languages ||
       challenge?.challenge_languages ||
       [];
 
-    const selected = languages.find(
-      (item) =>
-        (item.language ||
-          item.language_name) ===
-        newLanguage
-    );
+    const selected =
+      languages.find(
+        (item) =>
+          (
+            item.language ||
+            item.language_name
+          ) === newLanguage
+      );
 
     if (selected) {
       setCode(
@@ -365,12 +477,18 @@ export default function ChallengeDetail() {
     try {
       const response =
         await api.runCode({
-          slug: challenge.slug,
+          slug:
+            challenge.slug,
+
           language,
-          source_code: code,
+
+          source_code:
+            code,
         });
 
-      setResult(response);
+      setResult(
+        response
+      );
     } catch (err) {
       setResult({
         type: "error",
@@ -391,14 +509,22 @@ export default function ChallengeDetail() {
     try {
       const response =
         await api.submitCode({
-          slug: challenge.slug,
-          language,
-          source_code: code,
-          examAttemptId: examAttemptId || undefined,
+          slug:
+            challenge.slug,
 
+          language,
+
+          source_code:
+            code,
+
+          examAttemptId:
+            examAttemptId ||
+            undefined,
         });
 
-      setResult(response);
+      setResult(
+        response
+      );
     } catch (err) {
       setResult({
         type: "error",
@@ -414,7 +540,9 @@ export default function ChallengeDetail() {
   // ===============================
 
   function resetCode() {
-    changeLanguage(language);
+    changeLanguage(
+      language
+    );
   }
 
   // ===============================
@@ -451,17 +579,26 @@ export default function ChallengeDetail() {
 
       {examAttemptId && (
         <div className="mb-4 border border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5 text-[var(--color-teal-dark)] text-sm p-3 flex items-center justify-between">
-          <span>Answering this coding question as part of your exam.</span>
-          <Link to={`/exams/${searchParams.get("examId") || ""}/take`} className="underline">
+          <span>
+            Answering this coding
+            question as part of
+            your exam.
+          </span>
+
+          <Link
+            to={`/exams/${
+              searchParams.get(
+                "examId"
+              ) || ""
+            }/take`}
+            className="underline"
+          >
             ← Back to exam
           </Link>
         </div>
       )}
 
-
-      {/* ===============================
-          HEADER
-      =============================== */}
+      {/* HEADER */}
 
       <div className="mb-5">
 
@@ -476,20 +613,25 @@ export default function ChallengeDetail() {
           </span>
 
           <span className="text-xs text-[var(--color-brass-dark)] font-mono font-medium">
-            +{challenge.xp_reward ||
+            +
+            {challenge.xp_reward ||
               challenge.xp ||
-              100} XP
+              100}
+            XP
           </span>
 
-          {/* MONITOR STATUS */}
+          {/* MONITOR */}
 
           <span
             className={`text-xs px-2 py-1 font-mono ${
-              monitorStatus === "monitoring"
+              monitorStatus ===
+              "monitoring"
                 ? "text-[var(--color-teal-dark)] border border-[var(--color-teal)]/40"
-                : monitorStatus === "connected"
+                : monitorStatus ===
+                  "connected"
                 ? "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
-                : monitorStatus === "offline"
+                : monitorStatus ===
+                  "offline"
                 ? "text-[var(--color-red-dark)] border border-[var(--color-red)]/40"
                 : "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
             }`}
@@ -506,15 +648,11 @@ export default function ChallengeDetail() {
 
       </div>
 
-      {/* ===============================
-          MAIN CONTENT
-      =============================== */}
+      {/* MAIN */}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 
-        {/* ===============================
-            PROBLEM
-        =============================== */}
+        {/* PROBLEM */}
 
         <section className="ledger-card">
 
@@ -546,9 +684,7 @@ export default function ChallengeDetail() {
 
         </section>
 
-        {/* ===============================
-            CODE EDITOR
-        =============================== */}
+        {/* CODE EDITOR */}
 
         <section className="border border-[var(--color-line)] bg-[#1c1712] overflow-hidden">
 
@@ -556,34 +692,39 @@ export default function ChallengeDetail() {
 
             <div className="flex gap-2">
 
-              {languages.map((item) => {
+              {languages.map(
+                (item) => {
+                  const lang =
+                    item.language ||
+                    item.language_name;
 
-                const lang =
-                  item.language ||
-                  item.language_name;
-
-                return (
-                  <button
-                    key={lang}
-                    onClick={() =>
-                      changeLanguage(lang)
-                    }
-                    className={`px-3 py-1.5 text-xs font-mono ${
-                      language === lang
-                        ? "bg-[var(--color-brass)] text-[#1c1712] font-semibold"
-                        : "bg-[#241e19] text-[#a99872] hover:text-[#f1e9dc]"
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                );
-
-              })}
+                  return (
+                    <button
+                      key={lang}
+                      onClick={() =>
+                        changeLanguage(
+                          lang
+                        )
+                      }
+                      className={`px-3 py-1.5 text-xs font-mono ${
+                        language ===
+                        lang
+                          ? "bg-[var(--color-brass)] text-[#1c1712] font-semibold"
+                          : "bg-[#241e19] text-[#a99872] hover:text-[#f1e9dc]"
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  );
+                }
+              )}
 
             </div>
 
             <button
-              onClick={resetCode}
+              onClick={
+                resetCode
+              }
               className="text-xs text-[#93876f] hover:text-[#f1e9dc]"
             >
               RESET
@@ -593,20 +734,19 @@ export default function ChallengeDetail() {
 
           <Editor
             height="500px"
-
             language={
-              languageConfig[language]
-                ?.monaco || language
+              languageConfig[
+                language
+              ]?.monaco ||
+              language
             }
-
             value={code}
-
             onChange={(value) =>
-              setCode(value || "")
+              setCode(
+                value || ""
+              )
             }
-
             theme="vs-dark"
-
             options={{
               minimap: {
                 enabled: false,
@@ -628,7 +768,9 @@ export default function ChallengeDetail() {
           <div className="border-t border-[var(--color-line)]/30 p-3 flex gap-3">
 
             <button
-              onClick={runCode}
+              onClick={
+                runCode
+              }
               disabled={running}
               className="px-5 py-2 bg-[#241e19] border border-[#3a3025] text-[#f1e9dc] hover:border-[var(--color-brass)] disabled:opacity-50"
             >
@@ -638,7 +780,9 @@ export default function ChallengeDetail() {
             </button>
 
             <button
-              onClick={submitCode}
+              onClick={
+                submitCode
+              }
               disabled={running}
               className="px-5 py-2 bg-[var(--color-brass)] text-[#1c1712] font-bold hover:bg-[var(--color-brass-dark)] disabled:opacity-50"
             >
@@ -653,9 +797,7 @@ export default function ChallengeDetail() {
 
       </div>
 
-      {/* ===============================
-          EXECUTION RESULT
-      =============================== */}
+      {/* RESULT */}
 
       <section className="mt-5 ledger-card">
 
@@ -671,83 +813,148 @@ export default function ChallengeDetail() {
 
           {!result ? (
             <p className="text-[var(--color-ink-faint)] font-mono text-sm">
-              Run your code to see the result.
+              Run your code to see
+              the result.
             </p>
-          ) : result.type === "error" ? (
+          ) : result.type ===
+            "error" ? (
             <p className="text-[var(--color-red)] font-mono text-sm">
               {result.message}
             </p>
           ) : (
             <div>
-              {/* Overall status */}
+
               <div className="flex items-center gap-4 mb-4">
+
                 <span
                   className={`text-sm font-mono font-bold px-3 py-1 border ${
-                    result.status === "accepted"
+                    result.status ===
+                    "accepted"
                       ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
                       : result.status
                       ? "text-[var(--color-red-dark)] border-[var(--color-red)]/30 bg-[var(--color-red)]/5"
-                      : result.passedCount === result.totalCount && result.totalCount > 0
+                      : result.passedCount ===
+                          result.totalCount &&
+                        result.totalCount >
+                          0
                       ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
                       : "text-[var(--color-brass-dark)] border-[var(--color-brass)]/30 bg-[var(--color-brass)]/5"
                   }`}
                 >
                   {result.status
-                    ? result.status.replace(/_/g, " ").toUpperCase()
+                    ? result.status
+                        .replace(
+                          /_/g,
+                          " "
+                        )
+                        .toUpperCase()
                     : "RAN"}
                 </span>
 
                 <span className="text-sm text-[var(--color-ink-muted)] font-mono">
-                  {result.passedCount}/{result.totalCount} test cases passed
+                  {result.passedCount}/
+                  {result.totalCount}{" "}
+                  test cases
+                  passed
                 </span>
 
-                {result.xpEarned > 0 && (
+                {result.xpEarned >
+                  0 && (
                   <span className="text-sm text-[var(--color-brass-dark)] font-mono">
-                    +{result.xpEarned} XP
+                    +
+                    {
+                      result.xpEarned
+                    }{" "}
+                    XP
                   </span>
                 )}
+
               </div>
 
-              {/* Per-test-case breakdown */}
               <div className="space-y-2">
-                {(result.results || []).map((r, i) => (
-                  <div
-                    key={i}
-                    className={`border p-3 text-sm ${
-                      r.passed
-                        ? "border-[var(--color-teal)]/20 bg-[var(--color-teal)]/5"
-                        : "border-[var(--color-red)]/20 bg-[var(--color-red)]/5"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`font-mono font-bold ${r.passed ? "text-[var(--color-teal-dark)]" : "text-[var(--color-red-dark)]"}`}>
-                        {r.passed ? "✓ PASSED" : "✗ FAILED"} — Test {i + 1}
-                      </span>
-                      <span className="text-xs text-[var(--color-ink-muted)] font-mono">
-                        {r.status.replace(/_/g, " ")}
-                        {r.executionTimeMs != null ? ` · ${r.executionTimeMs}ms` : ""}
-                      </span>
-                    </div>
 
-                    {r.expected !== undefined && (
-                      <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-xs">
-                        <div>
-                          <p className="text-[var(--color-ink-muted)] mb-1">Expected</p>
-                          <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">{r.expected}</pre>
-                        </div>
-                        <div>
-                          <p className="text-[var(--color-ink-muted)] mb-1">Your output</p>
-                          <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">{r.actual}</pre>
-                        </div>
+                {(result.results ||
+                  []
+                ).map(
+                  (r, i) => (
+                    <div
+                      key={i}
+                      className={`border p-3 text-sm ${
+                        r.passed
+                          ? "border-[var(--color-teal)]/20 bg-[var(--color-teal)]/5"
+                          : "border-[var(--color-red)]/20 bg-[var(--color-red)]/5"
+                      }`}
+                    >
+
+                      <div className="flex items-center justify-between">
+
+                        <span
+                          className={`font-mono font-bold ${
+                            r.passed
+                              ? "text-[var(--color-teal-dark)]"
+                              : "text-[var(--color-red-dark)]"
+                          }`}
+                        >
+                          {r.passed
+                            ? "✓ PASSED"
+                            : "✗ FAILED"}{" "}
+                          — Test{" "}
+                          {i + 1}
+                        </span>
+
+                        <span className="text-xs text-[var(--color-ink-muted)] font-mono">
+                          {r.status.replace(
+                            /_/g,
+                            " "
+                          )}
+
+                          {r.executionTimeMs !=
+                          null
+                            ? ` · ${r.executionTimeMs}ms`
+                            : ""}
+                        </span>
+
                       </div>
-                    )}
 
-                    {r.message && (
-                      <pre className="mt-2 text-xs text-[var(--color-red-dark)] whitespace-pre-wrap break-all">{r.message}</pre>
-                    )}
-                  </div>
-                ))}
+                      {r.expected !==
+                        undefined && (
+                        <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-xs">
+
+                          <div>
+                            <p className="text-[var(--color-ink-muted)] mb-1">
+                              Expected
+                            </p>
+
+                            <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">
+                              {r.expected}
+                            </pre>
+                          </div>
+
+                          <div>
+                            <p className="text-[var(--color-ink-muted)] mb-1">
+                              Your output
+                            </p>
+
+                            <pre className="text-[var(--color-ink)] whitespace-pre-wrap break-all">
+                              {r.actual}
+                            </pre>
+                          </div>
+
+                        </div>
+                      )}
+
+                      {r.message && (
+                        <pre className="mt-2 text-xs text-[var(--color-red-dark)] whitespace-pre-wrap break-all">
+                          {r.message}
+                        </pre>
+                      )}
+
+                    </div>
+                  )
+                )}
+
               </div>
+
             </div>
           )}
 

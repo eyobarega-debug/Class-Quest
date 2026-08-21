@@ -1,4 +1,5 @@
 const { app } = require("electron");
+
 const http = require("http");
 const https = require("https");
 const { URL } = require("url");
@@ -6,11 +7,12 @@ const { activeWindow } = require("get-windows");
 
 const MONITOR_PORT = 3847;
 
-// Where to send violation reports. Set by the frontend on /start via
-// apiBaseUrl (e.g. "https://your-app.onrender.com/api"). Falls back
-// to localhost for local development so nothing breaks if an older
-// frontend build doesn't send it yet.
-const DEFAULT_API_BASE_URL = "http://localhost:5000/api";
+// ===============================
+// DEFAULT BACKEND
+// ===============================
+
+const DEFAULT_API_BASE_URL =
+  "https://classquest-backend.onrender.com/api";
 
 let monitoring = false;
 let session = null;
@@ -18,6 +20,10 @@ let authToken = null;
 let allowedTitle = "";
 let apiBaseUrl = DEFAULT_API_BASE_URL;
 let lastViolation = null;
+
+// ===============================
+// BROWSERS
+// ===============================
 
 const browsers = [
   "chrome.exe",
@@ -27,105 +33,242 @@ const browsers = [
   "opera.exe",
 ];
 
-function sendJSON(res, statusCode, data) {
+// ===============================
+// SEND JSON
+// ===============================
+
+function sendJSON(
+  res,
+  statusCode,
+  data
+) {
   res.writeHead(statusCode, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type":
+      "application/json",
+
+    "Access-Control-Allow-Origin":
+      "*",
+
+    "Access-Control-Allow-Methods":
+      "GET, POST, OPTIONS",
+
+    "Access-Control-Allow-Headers":
+      "Content-Type",
   });
 
-  res.end(JSON.stringify(data));
+  res.end(
+    JSON.stringify(data)
+  );
 }
 
-async function reportViolation(windowInfo) {
-  if (!monitoring || !session || !authToken) {
+// ===============================
+// REPORT VIOLATION
+// ===============================
+
+async function reportViolation(
+  windowInfo
+) {
+  if (
+    !monitoring ||
+    !session ||
+    !authToken
+  ) {
     return;
   }
 
   const applicationName =
-    windowInfo.owner?.name || "Unknown Application";
+    windowInfo.owner?.name ||
+    "Unknown Application";
 
-  const windowTitle = windowInfo.title || "";
+  const windowTitle =
+    windowInfo.title || "";
 
-  const violationKey = `${applicationName}|${windowTitle}`;
+  const violationKey =
+    `${applicationName}|${windowTitle}`;
 
-  if (lastViolation === violationKey) {
+  // Prevent duplicate reports
+  if (
+    lastViolation ===
+    violationKey
+  ) {
     return;
   }
 
-  lastViolation = violationKey;
+  lastViolation =
+    violationKey;
 
-  const data = JSON.stringify({
-    sessionId: session.sessionId,
-    challengeId: session.challengeId || undefined,
-    examAttemptId: session.examAttemptId || undefined,
-    eventType: "APPLICATION_SWITCH",
-    applicationName,
-    windowTitle,
-    details: {
-      source: "electron-monitor",
-      timestamp: new Date().toISOString(),
-    },
-  });
+  const data =
+    JSON.stringify({
+      sessionId:
+        session.sessionId,
 
-  // Build the request against whatever backend the frontend told us
-  // to use, instead of assuming localhost:5000 — this is what makes
-  // proctoring work once the backend is actually deployed somewhere
-  // (Render, etc.) rather than only on the developer's own machine.
-  let target;
-  try {
-    target = new URL(apiBaseUrl.replace(/\/$/, "") + "/violations/report");
-  } catch (err) {
-    console.error("Invalid apiBaseUrl, cannot report violation:", apiBaseUrl, err.message);
-    return;
-  }
+      challengeId:
+        session.challengeId ||
+        undefined,
 
-  const transport = target.protocol === "https:" ? https : http;
+      examAttemptId:
+        session.examAttemptId ||
+        undefined,
 
-  const request = transport.request(
-    {
-      hostname: target.hostname,
-      port: target.port || (target.protocol === "https:" ? 443 : 80),
-      path: target.pathname + target.search,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(data),
-        Authorization: `Bearer ${authToken}`,
+      eventType:
+        "APPLICATION_SWITCH",
+
+      applicationName,
+
+      windowTitle,
+
+      details: {
+        source:
+          "electron-monitor",
+
+        timestamp:
+          new Date().toISOString(),
       },
-    },
-    (res) => {
-      let body = "";
+    });
 
-      res.on("data", (chunk) => {
-        body += chunk;
-      });
+  // ===============================
+  // BACKEND URL
+  // ===============================
 
-      res.on("end", () => {
-        console.log(
-          `Violation report: ${res.statusCode}`,
-          body
+  let target;
+
+  try {
+    const base =
+      apiBaseUrl.replace(
+        /\/$/,
+        ""
+      );
+
+    target = new URL(
+      `${base}/violations/report`
+    );
+  } catch (error) {
+    console.error(
+      "Invalid API URL:",
+      apiBaseUrl
+    );
+
+    return;
+  }
+
+  const transport =
+    target.protocol === "https:"
+      ? https
+      : http;
+
+  // ===============================
+  // SEND REQUEST
+  // ===============================
+
+  const request =
+    transport.request(
+      {
+        hostname:
+          target.hostname,
+
+        port:
+          target.port ||
+          (target.protocol ===
+          "https:"
+            ? 443
+            : 80),
+
+        path:
+          target.pathname +
+          target.search,
+
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          "Content-Length":
+            Buffer.byteLength(
+              data
+            ),
+
+          Authorization:
+            `Bearer ${authToken}`,
+        },
+      },
+
+      (res) => {
+        let body = "";
+
+        res.on(
+          "data",
+          (chunk) => {
+            body += chunk;
+          }
         );
-      });
+
+        res.on(
+          "end",
+          () => {
+            console.log(
+              "================================"
+            );
+
+            console.log(
+              "VIOLATION REPORT"
+            );
+
+            console.log(
+              "Status:",
+              res.statusCode
+            );
+
+            console.log(
+              "Response:",
+              body
+            );
+
+            console.log(
+              "================================"
+            );
+          }
+        );
+      }
+    );
+
+  request.on(
+    "error",
+    (error) => {
+      console.error(
+        "Could not report violation:",
+        error.message
+      );
     }
   );
-
-  request.on("error", (error) => {
-    console.error(
-      "Could not report violation:",
-      error.message
-    );
-  });
 
   request.write(data);
   request.end();
 
-  console.log("🚨 VIOLATION DETECTED");
-  console.log("Application:", applicationName);
-  console.log("Window:", windowTitle);
-  console.log("-------------------------");
+  console.log("");
+  console.log(
+    "🚨 VIOLATION DETECTED"
+  );
+  console.log(
+    "Application:",
+    applicationName
+  );
+  console.log(
+    "Window:",
+    windowTitle
+  );
+  console.log(
+    "Reporting to:",
+    apiBaseUrl
+  );
+  console.log(
+    "-------------------------"
+  );
 }
+
+// ===============================
+// CHECK ACTIVE WINDOW
+// ===============================
 
 async function checkActiveWindow() {
   if (!monitoring) {
@@ -133,17 +276,20 @@ async function checkActiveWindow() {
   }
 
   try {
-    const windowInfo = await activeWindow();
+    const windowInfo =
+      await activeWindow();
 
     if (!windowInfo) {
       return;
     }
 
     const applicationName =
-      windowInfo.owner?.name || "";
+      windowInfo.owner?.name ||
+      "";
 
     const title =
-      windowInfo.title || "";
+      windowInfo.title ||
+      "";
 
     console.log(
       "Active:",
@@ -152,26 +298,55 @@ async function checkActiveWindow() {
       title
     );
 
+    // ===============================
+    // CHECK TITLE
+    // ===============================
+
     const titleMatches =
       allowedTitle &&
-      title.includes(allowedTitle);
+      title.includes(
+        allowedTitle
+      );
+
+    // ===============================
+    // CHECK BROWSER
+    // ===============================
+
+    const executable =
+      windowInfo.owner?.path
+        ?.split("\\")
+        .pop()
+        ?.toLowerCase();
 
     const isBrowser =
       browsers.includes(
-        windowInfo.owner?.path
-          ?.split("\\")
-          .pop()
-          ?.toLowerCase()
+        executable
       );
 
-    if (!titleMatches && !isBrowser) {
-      await reportViolation(windowInfo);
+    // ===============================
+    // VIOLATION
+    // ===============================
+
+    if (
+      !titleMatches &&
+      !isBrowser
+    ) {
+      await reportViolation(
+        windowInfo
+      );
     }
 
-    if (isBrowser && !titleMatches) {
-      await reportViolation(windowInfo);
+    // Browser but wrong page
+    if (
+      isBrowser &&
+      !titleMatches
+    ) {
+      await reportViolation(
+        windowInfo
+      );
     }
 
+    // Correct ClassQuest page
     if (titleMatches) {
       lastViolation = null;
     }
@@ -183,119 +358,280 @@ async function checkActiveWindow() {
   }
 }
 
+// ===============================
+// LOCAL MONITOR SERVER
+// ===============================
+
 function startServer() {
-  const server = http.createServer((req, res) => {
-    if (req.method === "OPTIONS") {
-      return sendJSON(res, 200, { ok: true });
-    }
+  const server =
+    http.createServer(
+      (req, res) => {
 
-    if (req.method === "GET" && req.url === "/status") {
-      return sendJSON(res, 200, {
-        monitoring,
-        session,
-      });
-    }
+        // ===============================
+        // OPTIONS
+        // ===============================
 
-    if (
-      req.method === "POST" &&
-      req.url === "/start"
-    ) {
-      let body = "";
-
-      req.on("data", (chunk) => {
-        body += chunk;
-      });
-
-      req.on("end", () => {
-        try {
-          const data = JSON.parse(body);
-
-          if (
-            !data.sessionId ||
-            (!data.challengeId && !data.examAttemptId) ||
-            !data.token
-          ) {
-            return sendJSON(res, 400, {
-              message:
-                "sessionId, (challengeId or examAttemptId) and token are required",
-            });
-          }
-
-          session = {
-            sessionId: data.sessionId,
-            challengeId: data.challengeId || null,
-            examAttemptId: data.examAttemptId || null,
-          };
-
-          authToken = data.token;
-
-          allowedTitle =
-            data.allowedTitle || "ClassQuest";
-
-          apiBaseUrl = data.apiBaseUrl || DEFAULT_API_BASE_URL;
-
-          monitoring = true;
-          lastViolation = null;
-
-          console.log("");
-          console.log("================================");
-          console.log("CLASSQUEST MONITOR STARTED");
-          console.log("Session:", session.sessionId);
-          console.log("Challenge:", session.challengeId);
-          console.log("Exam attempt:", session.examAttemptId);
-          console.log("Allowed title:", allowedTitle);
-          console.log("Reporting to:", apiBaseUrl);
-          console.log("================================");
-          console.log("");
-
-          return sendJSON(res, 200, {
-            message: "Monitoring started",
-          });
-        } catch (error) {
-          return sendJSON(res, 400, {
-            message: "Invalid JSON",
-          });
+        if (
+          req.method ===
+          "OPTIONS"
+        ) {
+          return sendJSON(
+            res,
+            200,
+            { ok: true }
+          );
         }
-      });
 
-      return;
-    }
+        // ===============================
+        // STATUS
+        // ===============================
 
-    if (
-      req.method === "POST" &&
-      req.url === "/stop"
-    ) {
-      monitoring = false;
-      session = null;
-      authToken = null;
-      allowedTitle = "";
-      apiBaseUrl = DEFAULT_API_BASE_URL;
-      lastViolation = null;
+        if (
+          req.method === "GET" &&
+          req.url === "/status"
+        ) {
+          return sendJSON(
+            res,
+            200,
+            {
+              monitoring,
+              session,
+            }
+          );
+        }
 
-      console.log("CLASSQUEST MONITOR STOPPED");
+        // ===============================
+        // START
+        // ===============================
 
-      return sendJSON(res, 200, {
-        message: "Monitoring stopped",
-      });
-    }
+        if (
+          req.method === "POST" &&
+          req.url === "/start"
+        ) {
+          let body = "";
 
-    sendJSON(res, 404, {
-      message: "Not found",
-    });
-  });
+          req.on(
+            "data",
+            (chunk) => {
+              body += chunk;
+            }
+          );
 
-  server.listen(MONITOR_PORT, "127.0.0.1", () => {
-    console.log(
-      `ClassQuest Monitor running on http://127.0.0.1:${MONITOR_PORT}`
+          req.on(
+            "end",
+            () => {
+              try {
+                const data =
+                  JSON.parse(
+                    body
+                  );
+
+                if (
+                  !data.sessionId ||
+                  (
+                    !data.challengeId &&
+                    !data.examAttemptId
+                  ) ||
+                  !data.token
+                ) {
+                  return sendJSON(
+                    res,
+                    400,
+                    {
+                      message:
+                        "sessionId, (challengeId or examAttemptId) and token are required",
+                    }
+                  );
+                }
+
+                // ===============================
+                // SAVE SESSION
+                // ===============================
+
+                session = {
+                  sessionId:
+                    data.sessionId,
+
+                  challengeId:
+                    data.challengeId ||
+                    null,
+
+                  examAttemptId:
+                    data.examAttemptId ||
+                    null,
+                };
+
+                // ===============================
+                // SAVE AUTH
+                // ===============================
+
+                authToken =
+                  data.token;
+
+                // ===============================
+                // SAVE ALLOWED TITLE
+                // ===============================
+
+                allowedTitle =
+                  data.allowedTitle ||
+                  "ClassQuest";
+
+                // ===============================
+                // SAVE API URL
+                // ===============================
+
+                apiBaseUrl =
+                  data.apiBaseUrl ||
+                  DEFAULT_API_BASE_URL;
+
+                monitoring = true;
+
+                lastViolation =
+                  null;
+
+                console.log("");
+
+                console.log(
+                  "================================"
+                );
+
+                console.log(
+                  "CLASSQUEST MONITOR STARTED"
+                );
+
+                console.log(
+                  "Session:",
+                  session.sessionId
+                );
+
+                console.log(
+                  "Challenge:",
+                  session.challengeId
+                );
+
+                console.log(
+                  "Exam attempt:",
+                  session.examAttemptId
+                );
+
+                console.log(
+                  "Allowed title:",
+                  allowedTitle
+                );
+
+                console.log(
+                  "Reporting to:",
+                  apiBaseUrl
+                );
+
+                console.log(
+                  "================================"
+                );
+
+                console.log("");
+
+                return sendJSON(
+                  res,
+                  200,
+                  {
+                    message:
+                      "Monitoring started",
+                  }
+                );
+              } catch (error) {
+                return sendJSON(
+                  res,
+                  400,
+                  {
+                    message:
+                      "Invalid JSON",
+                  }
+                );
+              }
+            }
+          );
+
+          return;
+        }
+
+        // ===============================
+        // STOP
+        // ===============================
+
+        if (
+          req.method === "POST" &&
+          req.url === "/stop"
+        ) {
+          monitoring = false;
+
+          session = null;
+
+          authToken = null;
+
+          allowedTitle = "";
+
+          apiBaseUrl =
+            DEFAULT_API_BASE_URL;
+
+          lastViolation =
+            null;
+
+          console.log(
+            "CLASSQUEST MONITOR STOPPED"
+          );
+
+          return sendJSON(
+            res,
+            200,
+            {
+              message:
+                "Monitoring stopped",
+            }
+          );
+        }
+
+        // ===============================
+        // NOT FOUND
+        // ===============================
+
+        return sendJSON(
+          res,
+          404,
+          {
+            message:
+              "Not found",
+          }
+        );
+      }
     );
-  });
+
+  server.listen(
+    MONITOR_PORT,
+    "127.0.0.1",
+    () => {
+      console.log(
+        `ClassQuest Monitor running on http://127.0.0.1:${MONITOR_PORT}`
+      );
+    }
+  );
 }
+
+// ===============================
+// ELECTRON
+// ===============================
 
 app.whenReady().then(() => {
   startServer();
-  setInterval(checkActiveWindow, 1000);
+
+  setInterval(
+    checkActiveWindow,
+    1000
+  );
 });
 
-app.on("window-all-closed", () => {
-  // Keep monitor running in background.
-});
+app.on(
+  "window-all-closed",
+  () => {
+    // Keep monitor running
+  }
+);
