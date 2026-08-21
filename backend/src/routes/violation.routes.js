@@ -13,36 +13,32 @@ import { requireAdmin } from "../middleware/admin.middleware.js";
 
 const router = express.Router();
 
-// ===============================
+// ==========================================
 // STUDENT ROUTES
-// ===============================
+// ==========================================
 
-// Start monitoring session
 router.post(
   "/sessions/start",
   authenticate,
   startTestSession
 );
 
-// Report violation
 router.post(
   "/report",
   authenticate,
   reportViolation
 );
 
-// Finish monitoring session
 router.post(
   "/sessions/finish",
   authenticate,
   finishTestSession
 );
 
-// ===============================
+// ==========================================
 // ADMIN ROUTES
-// ===============================
+// ==========================================
 
-// Get all violations
 router.get(
   "/",
   authenticate,
@@ -50,7 +46,6 @@ router.get(
   getViolations
 );
 
-// Get violations for one session
 router.get(
   "/session/:sessionId",
   authenticate,

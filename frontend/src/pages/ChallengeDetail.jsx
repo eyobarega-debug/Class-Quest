@@ -22,133 +22,97 @@ const languageConfig = {
   javascript: {
     monaco: "javascript",
   },
-
   js: {
     monaco: "javascript",
   },
-
   cpp: {
     monaco: "cpp",
   },
-
   "c++": {
     monaco: "cpp",
   },
-
   python: {
     monaco: "python",
   },
-
   java: {
     monaco: "java",
   },
 };
 
-const MONITOR_URL =
-  "http://127.0.0.1:3847";
+const MONITOR_URL = "http://127.0.0.1:3847";
 
 export default function ChallengeDetail() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
 
-  const [searchParams] =
-    useSearchParams();
-
-  const examAttemptId =
-    searchParams.get(
-      "examAttemptId"
-    );
+  const examAttemptId = searchParams.get("examAttemptId");
 
   // ===============================
   // STATE
   // ===============================
 
-  const [challenge, setChallenge] =
-    useState(null);
+  const [challenge, setChallenge] = useState(null);
+  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState("");
 
-  const [language, setLanguage] =
-    useState("javascript");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
 
-  const [code, setCode] =
-    useState("");
+  const [testSession, setTestSession] = useState(null);
+  const [monitorStatus, setMonitorStatus] = useState("checking");
 
-  const [result, setResult] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [running, setRunning] =
-    useState(false);
-
-  const [testSession, setTestSession] =
-    useState(null);
-
-  const [monitorStatus, setMonitorStatus] =
-    useState("checking");
-
-  const monitoringStarted =
-    useRef(false);
+  const monitoringStarted = useRef(false);
 
   // ===============================
   // LOAD CHALLENGE
   // ===============================
 
-  const loadChallenge =
-    useCallback(async () => {
-      setLoading(true);
+  const loadChallenge = useCallback(async () => {
+    setLoading(true);
 
-      try {
-        const data =
-          await api.challenge(
-            slug
-          );
+    try {
+      const data = await api.challenge(slug);
 
-        const item =
-          data.challenge ||
-          data;
+      const item = data.challenge || data;
 
-        setChallenge(item);
+      setChallenge(item);
 
-        const languages =
-          item.languages ||
-          item.challenge_languages ||
-          [];
+      const languages =
+        item.languages ||
+        item.challenge_languages ||
+        [];
 
-        if (
-          languages.length > 0
-        ) {
-          const first =
-            languages[0];
+      if (languages.length > 0) {
+        const first = languages[0];
 
-          const firstLanguage =
-            first.language ||
-            first.language_name ||
-            "javascript";
+        const firstLanguage =
+          first.language ||
+          first.language_name ||
+          "javascript";
 
-          setLanguage(
-            firstLanguage
-          );
+        setLanguage(firstLanguage);
 
-          setCode(
-            first.starter_code ||
-              first.code ||
-              ""
-          );
-        }
-      } catch (err) {
-        console.error(
-          "Failed to load challenge:",
-          err
+        setCode(
+          first.starter_code ||
+            first.code ||
+            ""
         );
-
-        setResult({
-          type: "error",
-          message: err.message,
-        });
-      } finally {
-        setLoading(false);
       }
-    }, [slug]);
+    } catch (err) {
+      console.error(
+        "Failed to load challenge:",
+        err
+      );
+
+      setResult({
+        type: "error",
+        message: err.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
 
   useEffect(() => {
     loadChallenge();
@@ -163,36 +127,28 @@ export default function ChallengeDetail() {
 
     async function checkMonitor() {
       try {
-        const response =
-          await fetch(
-            `${MONITOR_URL}/status`
-          );
+        const response = await fetch(
+          `${MONITOR_URL}/status`
+        );
 
         if (!response.ok) {
           if (!cancelled) {
-            setMonitorStatus(
-              "offline"
-            );
+            setMonitorStatus("offline");
           }
 
           return;
         }
 
-        const data =
-          await response.json();
+        const data = await response.json();
 
         if (cancelled) {
           return;
         }
 
         if (data.monitoring) {
-          setMonitorStatus(
-            "monitoring"
-          );
+          setMonitorStatus("monitoring");
         } else {
-          setMonitorStatus(
-            "connected"
-          );
+          setMonitorStatus("connected");
         }
       } catch (error) {
         if (!cancelled) {
@@ -201,26 +157,21 @@ export default function ChallengeDetail() {
             error
           );
 
-          setMonitorStatus(
-            "offline"
-          );
+          setMonitorStatus("offline");
         }
       }
     }
 
     checkMonitor();
 
-    const interval =
-      setInterval(
-        checkMonitor,
-        3000
-      );
+    const interval = setInterval(
+      checkMonitor,
+      3000
+    );
 
     return () => {
       cancelled = true;
-      clearInterval(
-        interval
-      );
+      clearInterval(interval);
     };
   }, []);
 
@@ -234,17 +185,13 @@ export default function ChallengeDetail() {
     }
 
     if (
-      monitorStatus !==
-        "connected" &&
-      monitorStatus !==
-        "monitoring"
+      monitorStatus !== "connected" &&
+      monitorStatus !== "monitoring"
     ) {
       return;
     }
 
-    if (
-      monitoringStarted.current
-    ) {
+    if (monitoringStarted.current) {
       return;
     }
 
@@ -268,29 +215,27 @@ export default function ChallengeDetail() {
         // ===============================
 
         const data =
-          await api.startTestSession(
-            challenge.id
-          );
+          await api.startTestSession({
+            challengeId: challenge.id,
+            ...(examAttemptId
+              ? { examAttemptId }
+              : {}),
+          });
 
         console.log(
           "Test session response:",
           data
         );
 
-        if (
-          !data?.session?.id
-        ) {
+        if (!data?.session?.id) {
           throw new Error(
             "Test session was not created."
           );
         }
 
-        const session =
-          data.session;
+        const session = data.session;
 
-        setTestSession(
-          session
-        );
+        setTestSession(session);
 
         // ===============================
         // START ELECTRON MONITOR
@@ -308,8 +253,7 @@ export default function ChallengeDetail() {
               },
 
               body: JSON.stringify({
-                sessionId:
-                  session.id,
+                sessionId: session.id,
 
                 challengeId:
                   challenge.id,
@@ -320,7 +264,9 @@ export default function ChallengeDetail() {
 
                 token,
 
-                // ⭐ IMPORTANT FIX
+                // IMPORTANT:
+                // Electron will send violations
+                // to the deployed backend.
                 apiBaseUrl:
                   API_BASE_URL,
 
@@ -334,21 +280,16 @@ export default function ChallengeDetail() {
         const monitorData =
           await monitorResponse.json();
 
-        if (
-          !monitorResponse.ok
-        ) {
+        if (!monitorResponse.ok) {
           throw new Error(
             monitorData.message ||
               "Failed to start Electron monitor."
           );
         }
 
-        monitoringStarted.current =
-          true;
+        monitoringStarted.current = true;
 
-        setMonitorStatus(
-          "monitoring"
-        );
+        setMonitorStatus("monitoring");
 
         console.log(
           "================================"
@@ -366,6 +307,11 @@ export default function ChallengeDetail() {
         console.log(
           "Challenge:",
           challenge.id
+        );
+
+        console.log(
+          "Exam Attempt:",
+          examAttemptId
         );
 
         console.log(
@@ -392,9 +338,7 @@ export default function ChallengeDetail() {
           error
         );
 
-        setMonitorStatus(
-          "offline"
-        );
+        setMonitorStatus("offline");
       }
     }
 
@@ -411,9 +355,7 @@ export default function ChallengeDetail() {
 
   useEffect(() => {
     return () => {
-      if (
-        !monitoringStarted.current
-      ) {
+      if (!monitoringStarted.current) {
         return;
       }
 
@@ -424,8 +366,7 @@ export default function ChallengeDetail() {
         }
       ).catch(() => {});
 
-      monitoringStarted.current =
-        false;
+      monitoringStarted.current = false;
 
       console.log(
         "ClassQuest monitor stopped."
@@ -437,26 +378,21 @@ export default function ChallengeDetail() {
   // LANGUAGE
   // ===============================
 
-  function changeLanguage(
-    newLanguage
-  ) {
-    setLanguage(
-      newLanguage
-    );
+  function changeLanguage(newLanguage) {
+    setLanguage(newLanguage);
 
     const languages =
       challenge?.languages ||
       challenge?.challenge_languages ||
       [];
 
-    const selected =
-      languages.find(
-        (item) =>
-          (
-            item.language ||
-            item.language_name
-          ) === newLanguage
-      );
+    const selected = languages.find(
+      (item) =>
+        (
+          item.language ||
+          item.language_name
+        ) === newLanguage
+    );
 
     if (selected) {
       setCode(
@@ -472,23 +408,21 @@ export default function ChallengeDetail() {
   // ===============================
 
   async function runCode() {
+    if (!challenge?.slug) {
+      return;
+    }
+
     setRunning(true);
 
     try {
       const response =
         await api.runCode({
-          slug:
-            challenge.slug,
-
+          slug: challenge.slug,
           language,
-
-          source_code:
-            code,
+          source_code: code,
         });
 
-      setResult(
-        response
-      );
+      setResult(response);
     } catch (err) {
       setResult({
         type: "error",
@@ -504,27 +438,24 @@ export default function ChallengeDetail() {
   // ===============================
 
   async function submitCode() {
+    if (!challenge?.slug) {
+      return;
+    }
+
     setRunning(true);
 
     try {
       const response =
         await api.submitCode({
-          slug:
-            challenge.slug,
-
+          slug: challenge.slug,
           language,
-
-          source_code:
-            code,
-
+          source_code: code,
           examAttemptId:
             examAttemptId ||
             undefined,
         });
 
-      setResult(
-        response
-      );
+      setResult(response);
     } catch (err) {
       setResult({
         type: "error",
@@ -540,9 +471,7 @@ export default function ChallengeDetail() {
   // ===============================
 
   function resetCode() {
-    changeLanguage(
-      language
-    );
+    changeLanguage(language);
   }
 
   // ===============================
@@ -576,20 +505,20 @@ export default function ChallengeDetail() {
 
   return (
     <div>
+      {/* ===============================
+          EXAM NOTICE
+      =============================== */}
 
       {examAttemptId && (
         <div className="mb-4 border border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5 text-[var(--color-teal-dark)] text-sm p-3 flex items-center justify-between">
           <span>
-            Answering this coding
-            question as part of
-            your exam.
+            Answering this coding question
+            as part of your exam.
           </span>
 
           <Link
             to={`/exams/${
-              searchParams.get(
-                "examId"
-              ) || ""
+              searchParams.get("examId") || ""
             }/take`}
             className="underline"
           >
@@ -598,12 +527,12 @@ export default function ChallengeDetail() {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* ===============================
+          HEADER
+      =============================== */}
 
       <div className="mb-5">
-
         <div className="flex flex-wrap items-center gap-3 mb-3">
-
           <span className="text-xs border border-[var(--color-teal)]/40 text-[var(--color-teal-dark)] px-2 py-1 font-mono uppercase">
             {challenge.difficulty}
           </span>
@@ -613,25 +542,18 @@ export default function ChallengeDetail() {
           </span>
 
           <span className="text-xs text-[var(--color-brass-dark)] font-mono font-medium">
-            +
-            {challenge.xp_reward ||
-              challenge.xp ||
-              100}
-            XP
+            +{challenge.xp_reward || challenge.xp || 100} XP
           </span>
 
-          {/* MONITOR */}
+          {/* MONITOR STATUS */}
 
           <span
             className={`text-xs px-2 py-1 font-mono ${
-              monitorStatus ===
-              "monitoring"
+              monitorStatus === "monitoring"
                 ? "text-[var(--color-teal-dark)] border border-[var(--color-teal)]/40"
-                : monitorStatus ===
-                  "connected"
+                : monitorStatus === "connected"
                 ? "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
-                : monitorStatus ===
-                  "offline"
+                : monitorStatus === "offline"
                 ? "text-[var(--color-red-dark)] border border-[var(--color-red)]/40"
                 : "text-[var(--color-brass-dark)] border border-[var(--color-brass)]/40"
             }`}
@@ -639,25 +561,24 @@ export default function ChallengeDetail() {
             MONITOR:{" "}
             {monitorStatus.toUpperCase()}
           </span>
-
         </div>
 
         <h1 className="text-3xl font-display font-bold text-[var(--color-ink)]">
           {challenge.title}
         </h1>
-
       </div>
 
-      {/* MAIN */}
+      {/* ===============================
+          MAIN CONTENT
+      =============================== */}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-
-        {/* PROBLEM */}
+        {/* ===============================
+            PROBLEM
+        =============================== */}
 
         <section className="ledger-card">
-
           <div className="p-5 border-b border-[var(--color-line)]">
-
             <h2 className="font-display font-bold text-[var(--color-ink)] mb-4">
               Problem
             </h2>
@@ -665,12 +586,10 @@ export default function ChallengeDetail() {
             <div className="text-sm text-[var(--color-ink-muted)] whitespace-pre-wrap leading-7">
               {challenge.description}
             </div>
-
           </div>
 
           {challenge.constraints && (
             <div className="p-5 border-b border-[var(--color-line)]">
-
               <h3 className="text-xs text-[var(--color-ink-muted)] font-mono tracking-wide mb-3">
                 CONSTRAINTS
               </h3>
@@ -678,99 +597,76 @@ export default function ChallengeDetail() {
               <div className="text-sm text-[var(--color-ink-muted)] whitespace-pre-wrap">
                 {challenge.constraints}
               </div>
-
             </div>
           )}
-
         </section>
 
-        {/* CODE EDITOR */}
+        {/* ===============================
+            CODE EDITOR
+        =============================== */}
 
         <section className="border border-[var(--color-line)] bg-[#1c1712] overflow-hidden">
-
           <div className="flex items-center justify-between border-b border-[var(--color-line)]/30 px-4 py-3">
-
             <div className="flex gap-2">
+              {languages.map((item) => {
+                const lang =
+                  item.language ||
+                  item.language_name;
 
-              {languages.map(
-                (item) => {
-                  const lang =
-                    item.language ||
-                    item.language_name;
-
-                  return (
-                    <button
-                      key={lang}
-                      onClick={() =>
-                        changeLanguage(
-                          lang
-                        )
-                      }
-                      className={`px-3 py-1.5 text-xs font-mono ${
-                        language ===
-                        lang
-                          ? "bg-[var(--color-brass)] text-[#1c1712] font-semibold"
-                          : "bg-[#241e19] text-[#a99872] hover:text-[#f1e9dc]"
-                      }`}
-                    >
-                      {lang}
-                    </button>
-                  );
-                }
-              )}
-
+                return (
+                  <button
+                    key={lang}
+                    onClick={() =>
+                      changeLanguage(lang)
+                    }
+                    className={`px-3 py-1.5 text-xs font-mono ${
+                      language === lang
+                        ? "bg-[var(--color-brass)] text-[#1c1712] font-semibold"
+                        : "bg-[#241e19] text-[#a99872] hover:text-[#f1e9dc]"
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                );
+              })}
             </div>
 
             <button
-              onClick={
-                resetCode
-              }
+              onClick={resetCode}
               className="text-xs text-[#93876f] hover:text-[#f1e9dc]"
             >
               RESET
             </button>
-
           </div>
 
           <Editor
             height="500px"
             language={
-              languageConfig[
-                language
-              ]?.monaco ||
-              language
+              languageConfig[language]
+                ?.monaco || language
             }
             value={code}
             onChange={(value) =>
-              setCode(
-                value || ""
-              )
+              setCode(value || "")
             }
             theme="vs-dark"
             options={{
               minimap: {
                 enabled: false,
               },
-
               fontSize: 14,
-
               fontFamily:
                 "JetBrains Mono, monospace",
-
               padding: {
                 top: 15,
               },
-
               automaticLayout: true,
             }}
           />
 
           <div className="border-t border-[var(--color-line)]/30 p-3 flex gap-3">
-
             <button
-              onClick={
-                runCode
-              }
+              onClick={runCode}
               disabled={running}
               className="px-5 py-2 bg-[#241e19] border border-[#3a3025] text-[#f1e9dc] hover:border-[var(--color-brass)] disabled:opacity-50"
             >
@@ -780,9 +676,7 @@ export default function ChallengeDetail() {
             </button>
 
             <button
-              onClick={
-                submitCode
-              }
+              onClick={submitCode}
               disabled={running}
               className="px-5 py-2 bg-[var(--color-brass)] text-[#1c1712] font-bold hover:bg-[var(--color-brass-dark)] disabled:opacity-50"
             >
@@ -790,92 +684,71 @@ export default function ChallengeDetail() {
                 ? "SUBMITTING..."
                 : "✓ SUBMIT"}
             </button>
-
           </div>
-
         </section>
-
       </div>
 
-      {/* RESULT */}
+      {/* ===============================
+          EXECUTION RESULT
+      =============================== */}
 
       <section className="mt-5 ledger-card">
-
         <div className="px-5 py-3 border-b border-[var(--color-line)]">
-
           <h2 className="text-xs text-[var(--color-ink-muted)] font-mono tracking-wide">
             EXECUTION RESULT
           </h2>
-
         </div>
 
         <div className="p-5">
-
           {!result ? (
             <p className="text-[var(--color-ink-faint)] font-mono text-sm">
-              Run your code to see
-              the result.
+              Run your code to see the result.
             </p>
-          ) : result.type ===
-            "error" ? (
+          ) : result.type === "error" ? (
             <p className="text-[var(--color-red)] font-mono text-sm">
               {result.message}
             </p>
           ) : (
             <div>
+              {/* OVERALL STATUS */}
 
               <div className="flex items-center gap-4 mb-4">
-
                 <span
                   className={`text-sm font-mono font-bold px-3 py-1 border ${
-                    result.status ===
-                    "accepted"
+                    result.status === "accepted"
                       ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
                       : result.status
                       ? "text-[var(--color-red-dark)] border-[var(--color-red)]/30 bg-[var(--color-red)]/5"
                       : result.passedCount ===
                           result.totalCount &&
-                        result.totalCount >
-                          0
+                        result.totalCount > 0
                       ? "text-[var(--color-teal-dark)] border-[var(--color-teal)]/30 bg-[var(--color-teal)]/5"
                       : "text-[var(--color-brass-dark)] border-[var(--color-brass)]/30 bg-[var(--color-brass)]/5"
                   }`}
                 >
                   {result.status
                     ? result.status
-                        .replace(
-                          /_/g,
-                          " "
-                        )
+                        .replace(/_/g, " ")
                         .toUpperCase()
                     : "RAN"}
                 </span>
 
                 <span className="text-sm text-[var(--color-ink-muted)] font-mono">
                   {result.passedCount}/
-                  {result.totalCount}{" "}
-                  test cases
-                  passed
+                  {result.totalCount} test cases passed
                 </span>
 
-                {result.xpEarned >
-                  0 && (
+                {result.xpEarned > 0 && (
                   <span className="text-sm text-[var(--color-brass-dark)] font-mono">
-                    +
-                    {
-                      result.xpEarned
-                    }{" "}
-                    XP
+                    +{result.xpEarned} XP
                   </span>
                 )}
-
               </div>
 
-              <div className="space-y-2">
+              {/* TEST CASES */}
 
-                {(result.results ||
-                  []
-                ).map(
+              <div className="space-y-2">
+                {(result.results || []).map(
                   (r, i) => (
                     <div
                       key={i}
@@ -885,9 +758,7 @@ export default function ChallengeDetail() {
                           : "border-[var(--color-red)]/20 bg-[var(--color-red)]/5"
                       }`}
                     >
-
                       <div className="flex items-center justify-between">
-
                         <span
                           className={`font-mono font-bold ${
                             r.passed
@@ -898,28 +769,27 @@ export default function ChallengeDetail() {
                           {r.passed
                             ? "✓ PASSED"
                             : "✗ FAILED"}{" "}
-                          — Test{" "}
-                          {i + 1}
+                          — Test {i + 1}
                         </span>
 
                         <span className="text-xs text-[var(--color-ink-muted)] font-mono">
-                          {r.status.replace(
-                            /_/g,
-                            " "
-                          )}
+                          {r.status
+                            ? r.status.replace(
+                                /_/g,
+                                " "
+                              )
+                            : ""}
 
                           {r.executionTimeMs !=
                           null
                             ? ` · ${r.executionTimeMs}ms`
                             : ""}
                         </span>
-
                       </div>
 
                       {r.expected !==
                         undefined && (
                         <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-xs">
-
                           <div>
                             <p className="text-[var(--color-ink-muted)] mb-1">
                               Expected
@@ -939,7 +809,6 @@ export default function ChallengeDetail() {
                               {r.actual}
                             </pre>
                           </div>
-
                         </div>
                       )}
 
@@ -948,20 +817,14 @@ export default function ChallengeDetail() {
                           {r.message}
                         </pre>
                       )}
-
                     </div>
                   )
                 )}
-
               </div>
-
             </div>
           )}
-
         </div>
-
       </section>
-
     </div>
   );
 }

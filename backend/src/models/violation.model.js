@@ -13,9 +13,9 @@ const EVENT_SEVERITIES = {
   UNKNOWN_APPLICATION: "high",
 };
 
-// ===============================
+// ==========================================
 // CREATE TEST SESSION
-// ===============================
+// ==========================================
 
 export async function createTestSession({
   userId,
@@ -30,7 +30,8 @@ export async function createTestSession({
         challenge_id,
         exam_attempt_id
       )
-    VALUES ($1, $2, $3)
+    VALUES
+      ($1, $2, $3)
     RETURNING *
     `,
     [
@@ -43,9 +44,9 @@ export async function createTestSession({
   return result.rows[0];
 }
 
-// ===============================
-// GET ACTIVE SESSION
-// ===============================
+// ==========================================
+// GET ACTIVE TEST SESSION
+// ==========================================
 
 export async function getActiveTestSession({
   userId,
@@ -82,9 +83,9 @@ export async function getActiveTestSession({
   return result.rows[0] || null;
 }
 
-// ===============================
+// ==========================================
 // CREATE VIOLATION
-// ===============================
+// ==========================================
 
 export async function createViolation({
   sessionId,
@@ -163,15 +164,16 @@ export async function createViolation({
     return violationResult.rows[0];
   } catch (error) {
     await client.query("ROLLBACK");
+
     throw error;
   } finally {
     client.release();
   }
 }
 
-// ===============================
+// ==========================================
 // END TEST SESSION
-// ===============================
+// ==========================================
 
 export async function endTestSession(
   sessionId,
@@ -186,15 +188,18 @@ export async function endTestSession(
     WHERE id = $2
     RETURNING *
     `,
-    [status, sessionId]
+    [
+      status,
+      sessionId,
+    ]
   );
 
   return result.rows[0] || null;
 }
 
-// ===============================
-// SESSION VIOLATIONS
-// ===============================
+// ==========================================
+// GET SESSION VIOLATIONS
+// ==========================================
 
 export async function getSessionViolations(
   sessionId
@@ -204,20 +209,28 @@ export async function getSessionViolations(
     SELECT
       tv.*,
       u.username,
+
       COALESCE(
         c.title,
         'Exam: ' || e.title
       ) AS challenge_title
+
     FROM test_violations tv
+
     JOIN users u
       ON u.id = tv.user_id
+
     LEFT JOIN challenges c
       ON c.id = tv.challenge_id
+
     LEFT JOIN exam_attempts ea
       ON ea.id = tv.exam_attempt_id
+
     LEFT JOIN exams e
       ON e.id = ea.exam_id
+
     WHERE tv.session_id = $1
+
     ORDER BY tv.created_at ASC
     `,
     [sessionId]
@@ -226,9 +239,9 @@ export async function getSessionViolations(
   return result.rows;
 }
 
-// ===============================
-// RECENT VIOLATIONS
-// ===============================
+// ==========================================
+// ADMIN: GET RECENT VIOLATIONS
+// ==========================================
 
 export async function getRecentViolations({
   limit = 100,
@@ -239,24 +252,35 @@ export async function getRecentViolations({
     SELECT
       tv.*,
       u.username,
+
       COALESCE(
         c.title,
         'Exam: ' || e.title
       ) AS challenge_title
+
     FROM test_violations tv
+
     JOIN users u
       ON u.id = tv.user_id
+
     LEFT JOIN challenges c
       ON c.id = tv.challenge_id
+
     LEFT JOIN exam_attempts ea
       ON ea.id = tv.exam_attempt_id
+
     LEFT JOIN exams e
       ON e.id = ea.exam_id
+
     ORDER BY tv.created_at DESC
+
     LIMIT $1
     OFFSET $2
     `,
-    [limit, offset]
+    [
+      limit,
+      offset,
+    ]
   );
 
   return result.rows;

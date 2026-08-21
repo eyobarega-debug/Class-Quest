@@ -3,27 +3,40 @@ const { app } = require("electron");
 const http = require("http");
 const https = require("https");
 const { URL } = require("url");
-const { activeWindow } = require("get-windows");
+
+const {
+  activeWindow,
+} = require("get-windows");
 
 const MONITOR_PORT = 3847;
 
-// ===============================
-// DEFAULT BACKEND
-// ===============================
+// ==========================================
+// BACKEND
+// ==========================================
 
 const DEFAULT_API_BASE_URL =
-  "https://classquest-backend.onrender.com/api";
+  "http://localhost:5000/api";
+
+let apiBaseUrl =
+  DEFAULT_API_BASE_URL;
+
+// ==========================================
+// MONITOR STATE
+// ==========================================
 
 let monitoring = false;
+
 let session = null;
+
 let authToken = null;
+
 let allowedTitle = "";
-let apiBaseUrl = DEFAULT_API_BASE_URL;
+
 let lastViolation = null;
 
-// ===============================
+// ==========================================
 // BROWSERS
-// ===============================
+// ==========================================
 
 const browsers = [
   "chrome.exe",
@@ -33,9 +46,9 @@ const browsers = [
   "opera.exe",
 ];
 
-// ===============================
+// ==========================================
 // SEND JSON
-// ===============================
+// ==========================================
 
 function sendJSON(
   res,
@@ -61,9 +74,9 @@ function sendJSON(
   );
 }
 
-// ===============================
-// REPORT VIOLATION
-// ===============================
+// ==========================================
+// REPORT VIOLATION TO BACKEND
+// ==========================================
 
 async function reportViolation(
   windowInfo
@@ -86,7 +99,7 @@ async function reportViolation(
   const violationKey =
     `${applicationName}|${windowTitle}`;
 
-  // Prevent duplicate reports
+  // Don't report the exact same window repeatedly
   if (
     lastViolation ===
     violationKey
@@ -97,55 +110,59 @@ async function reportViolation(
   lastViolation =
     violationKey;
 
-  const data =
-    JSON.stringify({
-      sessionId:
-        session.sessionId,
+  const data = JSON.stringify({
+    sessionId:
+      session.sessionId,
 
-      challengeId:
-        session.challengeId ||
-        undefined,
+    challengeId:
+      session.challengeId ||
+      undefined,
 
-      examAttemptId:
-        session.examAttemptId ||
-        undefined,
+    examAttemptId:
+      session.examAttemptId ||
+      undefined,
 
-      eventType:
-        "APPLICATION_SWITCH",
+    eventType:
+      "APPLICATION_SWITCH",
 
-      applicationName,
+    applicationName,
 
-      windowTitle,
+    windowTitle,
 
-      details: {
-        source:
-          "electron-monitor",
+    details: {
+      source:
+        "electron-monitor",
 
-        timestamp:
-          new Date().toISOString(),
-      },
-    });
+      timestamp:
+        new Date().toISOString(),
+    },
+  });
 
-  // ===============================
-  // BACKEND URL
-  // ===============================
+  // ========================================
+  // BUILD BACKEND URL
+  // ========================================
 
   let target;
 
   try {
-    const base =
+    const cleanBaseUrl =
       apiBaseUrl.replace(
         /\/$/,
         ""
       );
 
     target = new URL(
-      `${base}/violations/report`
+      cleanBaseUrl +
+        "/violations/report"
     );
   } catch (error) {
     console.error(
-      "Invalid API URL:",
+      "Invalid apiBaseUrl:",
       apiBaseUrl
+    );
+
+    console.error(
+      error.message
     );
 
     return;
@@ -156,9 +173,9 @@ async function reportViolation(
       ? https
       : http;
 
-  // ===============================
+  // ========================================
   // SEND REQUEST
-  // ===============================
+  // ========================================
 
   const request =
     transport.request(
@@ -168,10 +185,12 @@ async function reportViolation(
 
         port:
           target.port ||
-          (target.protocol ===
-          "https:"
-            ? 443
-            : 80),
+          (
+            target.protocol ===
+            "https:"
+              ? 443
+              : 80
+          ),
 
         path:
           target.pathname +
@@ -207,26 +226,28 @@ async function reportViolation(
           "end",
           () => {
             console.log(
-              "================================"
-            );
-
-            console.log(
-              "VIOLATION REPORT"
-            );
-
-            console.log(
-              "Status:",
+              "Violation report:",
               res.statusCode
             );
 
             console.log(
-              "Response:",
+              "Backend response:",
               body
             );
 
-            console.log(
-              "================================"
-            );
+            if (
+              res.statusCode >=
+                200 &&
+              res.statusCode < 300
+            ) {
+              console.log(
+                "✅ Violation successfully saved to backend."
+              );
+            } else {
+              console.error(
+                "❌ Backend rejected violation."
+              );
+            }
           }
         );
       }
@@ -243,6 +264,7 @@ async function reportViolation(
   );
 
   request.write(data);
+
   request.end();
 
   console.log("");
@@ -266,9 +288,9 @@ async function reportViolation(
   );
 }
 
-// ===============================
+// ==========================================
 // CHECK ACTIVE WINDOW
-// ===============================
+// ==========================================
 
 async function checkActiveWindow() {
   if (!monitoring) {
@@ -298,19 +320,11 @@ async function checkActiveWindow() {
       title
     );
 
-    // ===============================
-    // CHECK TITLE
-    // ===============================
-
     const titleMatches =
       allowedTitle &&
       title.includes(
         allowedTitle
       );
-
-    // ===============================
-    // CHECK BROWSER
-    // ===============================
 
     const executable =
       windowInfo.owner?.path
@@ -323,9 +337,9 @@ async function checkActiveWindow() {
         executable
       );
 
-    // ===============================
-    // VIOLATION
-    // ===============================
+    // ========================================
+    // UNAUTHORIZED APPLICATION
+    // ========================================
 
     if (
       !titleMatches &&
@@ -336,7 +350,10 @@ async function checkActiveWindow() {
       );
     }
 
-    // Browser but wrong page
+    // ========================================
+    // BROWSER BUT WRONG PAGE
+    // ========================================
+
     if (
       isBrowser &&
       !titleMatches
@@ -346,7 +363,10 @@ async function checkActiveWindow() {
       );
     }
 
-    // Correct ClassQuest page
+    // ========================================
+    // BACK TO CLASSQUEST
+    // ========================================
+
     if (titleMatches) {
       lastViolation = null;
     }
@@ -358,18 +378,17 @@ async function checkActiveWindow() {
   }
 }
 
-// ===============================
+// ==========================================
 // LOCAL MONITOR SERVER
-// ===============================
+// ==========================================
 
 function startServer() {
   const server =
     http.createServer(
       (req, res) => {
-
-        // ===============================
-        // OPTIONS
-        // ===============================
+        // ==================================
+        // CORS PREFLIGHT
+        // ==================================
 
         if (
           req.method ===
@@ -378,13 +397,15 @@ function startServer() {
           return sendJSON(
             res,
             200,
-            { ok: true }
+            {
+              ok: true,
+            }
           );
         }
 
-        // ===============================
+        // ==================================
         // STATUS
-        // ===============================
+        // ==================================
 
         if (
           req.method === "GET" &&
@@ -400,9 +421,9 @@ function startServer() {
           );
         }
 
-        // ===============================
+        // ==================================
         // START
-        // ===============================
+        // ==================================
 
         if (
           req.method === "POST" &&
@@ -444,10 +465,6 @@ function startServer() {
                   );
                 }
 
-                // ===============================
-                // SAVE SESSION
-                // ===============================
-
                 session = {
                   sessionId:
                     data.sessionId,
@@ -461,24 +478,17 @@ function startServer() {
                     null,
                 };
 
-                // ===============================
-                // SAVE AUTH
-                // ===============================
-
                 authToken =
                   data.token;
-
-                // ===============================
-                // SAVE ALLOWED TITLE
-                // ===============================
 
                 allowedTitle =
                   data.allowedTitle ||
                   "ClassQuest";
 
-                // ===============================
-                // SAVE API URL
-                // ===============================
+                // ==================================
+                // IMPORTANT:
+                // USE DEPLOYED BACKEND
+                // ==================================
 
                 apiBaseUrl =
                   data.apiBaseUrl ||
@@ -539,6 +549,11 @@ function startServer() {
                   }
                 );
               } catch (error) {
+                console.error(
+                  "Invalid JSON:",
+                  error
+                );
+
                 return sendJSON(
                   res,
                   400,
@@ -554,9 +569,9 @@ function startServer() {
           return;
         }
 
-        // ===============================
+        // ==================================
         // STOP
-        // ===============================
+        // ==================================
 
         if (
           req.method === "POST" &&
@@ -590,9 +605,9 @@ function startServer() {
           );
         }
 
-        // ===============================
+        // ==================================
         // NOT FOUND
-        // ===============================
+        // ==================================
 
         return sendJSON(
           res,
@@ -616,9 +631,9 @@ function startServer() {
   );
 }
 
-// ===============================
-// ELECTRON
-// ===============================
+// ==========================================
+// ELECTRON START
+// ==========================================
 
 app.whenReady().then(() => {
   startServer();
@@ -629,9 +644,8 @@ app.whenReady().then(() => {
   );
 });
 
+// Keep monitor running in background
 app.on(
   "window-all-closed",
-  () => {
-    // Keep monitor running
-  }
+  () => {}
 );

@@ -7,9 +7,9 @@ import {
   getRecentViolations,
 } from "../models/violation.model.js";
 
-// ===============================
-// STUDENT: START SESSION
-// ===============================
+// ==========================================
+// STUDENT: START TEST SESSION
+// ==========================================
 
 export async function startTestSession(req, res) {
   try {
@@ -61,14 +61,11 @@ export async function startTestSession(req, res) {
   }
 }
 
-// ===============================
+// ==========================================
 // STUDENT: REPORT VIOLATION
-// ===============================
+// ==========================================
 
-export async function reportViolation(
-  req,
-  res
-) {
+export async function reportViolation(req, res) {
   try {
     const {
       sessionId,
@@ -144,9 +141,9 @@ export async function reportViolation(
   }
 }
 
-// ===============================
-// STUDENT: FINISH SESSION
-// ===============================
+// ==========================================
+// STUDENT: FINISH TEST SESSION
+// ==========================================
 
 export async function finishTestSession(
   req,
@@ -193,9 +190,9 @@ export async function finishTestSession(
   }
 }
 
-// ===============================
-// ADMIN: SESSION VIOLATIONS
-// ===============================
+// ==========================================
+// ADMIN: GET SESSION VIOLATIONS
+// ==========================================
 
 export async function getViolationsForSession(
   req,
@@ -225,9 +222,9 @@ export async function getViolationsForSession(
   }
 }
 
-// ===============================
-// ADMIN: ALL VIOLATIONS
-// ===============================
+// ==========================================
+// ADMIN: GET ALL RECENT VIOLATIONS
+// ==========================================
 
 export async function getViolations(
   req,
