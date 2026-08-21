@@ -23,7 +23,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://class-quest-i7dk0ozpv-baba-5faa.vercel.app"
+    "https://class-quest-59lq5ih4v-baba-5faa.vercel.app"
   ],
   credentials: true
 }));
