@@ -1,9 +1,10 @@
 import axios from "axios";
 
-const client = axios.create({
-  baseURL: "https://classquest-backend.onrender.com/api",
-});
+export const API_BASE_URL = "https://classquest-backend.onrender.com/api";
 
+const client = axios.create({
+  baseURL: API_BASE_URL,
+});
 // ===============================
 // AUTH TOKEN
 // ===============================

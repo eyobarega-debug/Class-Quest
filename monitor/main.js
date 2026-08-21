@@ -1,13 +1,22 @@
 const { app } = require("electron");
 const http = require("http");
+const https = require("https");
+const { URL } = require("url");
 const { activeWindow } = require("get-windows");
 
 const MONITOR_PORT = 3847;
+
+// Where to send violation reports. Set by the frontend on /start via
+// apiBaseUrl (e.g. "https://your-app.onrender.com/api"). Falls back
+// to localhost for local development so nothing breaks if an older
+// frontend build doesn't send it yet.
+const DEFAULT_API_BASE_URL = "http://localhost:5000/api";
 
 let monitoring = false;
 let session = null;
 let authToken = null;
 let allowedTitle = "";
+let apiBaseUrl = DEFAULT_API_BASE_URL;
 let lastViolation = null;
 
 const browsers = [
@@ -60,11 +69,25 @@ async function reportViolation(windowInfo) {
     },
   });
 
-  const request = http.request(
+  // Build the request against whatever backend the frontend told us
+  // to use, instead of assuming localhost:5000 — this is what makes
+  // proctoring work once the backend is actually deployed somewhere
+  // (Render, etc.) rather than only on the developer's own machine.
+  let target;
+  try {
+    target = new URL(apiBaseUrl.replace(/\/$/, "") + "/violations/report");
+  } catch (err) {
+    console.error("Invalid apiBaseUrl, cannot report violation:", apiBaseUrl, err.message);
+    return;
+  }
+
+  const transport = target.protocol === "https:" ? https : http;
+
+  const request = transport.request(
     {
-      hostname: "localhost",
-      port: 5000,
-      path: "/api/violations/report",
+      hostname: target.hostname,
+      port: target.port || (target.protocol === "https:" ? 443 : 80),
+      path: target.pathname + target.search,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -209,6 +232,8 @@ function startServer() {
           allowedTitle =
             data.allowedTitle || "ClassQuest";
 
+          apiBaseUrl = data.apiBaseUrl || DEFAULT_API_BASE_URL;
+
           monitoring = true;
           lastViolation = null;
 
@@ -219,6 +244,7 @@ function startServer() {
           console.log("Challenge:", session.challengeId);
           console.log("Exam attempt:", session.examAttemptId);
           console.log("Allowed title:", allowedTitle);
+          console.log("Reporting to:", apiBaseUrl);
           console.log("================================");
           console.log("");
 
@@ -243,6 +269,7 @@ function startServer() {
       session = null;
       authToken = null;
       allowedTitle = "";
+      apiBaseUrl = DEFAULT_API_BASE_URL;
       lastViolation = null;
 
       console.log("CLASSQUEST MONITOR STOPPED");

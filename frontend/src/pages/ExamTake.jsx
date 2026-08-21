@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { api } from "../services/api";
+import { api, API_BASE_URL } from "../services/api";
 
 const MONITOR_URL = "http://127.0.0.1:3847";
 
