@@ -5,6 +5,7 @@ import {
   getExamWithPasswordHash,
   createExam,
   updateExam,
+  approveExamResult,
   updateExamPassword,
   deleteExam,
   getExamQuestionsForAdmin,
@@ -62,29 +63,71 @@ async function enforceExpiry(attempt, exam) {
 
 export async function getExams(req, res) {
   const publishedOnly = req.user.role !== "admin";
+
   const exams = await listExams({ publishedOnly });
 
   if (req.user.role === "admin") {
     return res.json({ exams });
   }
 
-  // Attach this student's own attempt status to each exam, so the
-  // frontend can mark completed exams instead of letting the student
-  // click into one they've already finished (only to be rejected).
+  // Attach this student's own attempt status to each exam
   const attemptRows = await getAttemptStatusesForUser(req.user.id);
-  const attemptByExam = new Map(attemptRows.map((a) => [a.exam_id, a]));
+
+  const attemptByExam = new Map(
+    attemptRows.map((a) => [a.exam_id, a])
+  );
 
   const examsWithStatus = exams.map((exam) => {
     const attempt = attemptByExam.get(exam.id);
+
     return {
       ...exam,
       studentAttempt: attempt
-        ? { status: attempt.status, totalScore: attempt.total_score, maxScore: attempt.max_score }
+        ? {
+            status: attempt.status,
+            totalScore: attempt.total_score,
+            maxScore: attempt.max_score,
+          }
         : null,
     };
   });
 
   res.json({ exams: examsWithStatus });
+}
+
+// -----------------------------------------------------------------------
+// Admin: approve exam result
+// -----------------------------------------------------------------------
+
+export async function approveResult(req, res) {
+  const attemptId = Number(req.params.attemptId);
+
+  if (!Number.isInteger(attemptId)) {
+    return res.status(400).json({
+      message: "Invalid attempt ID",
+    });
+  }
+
+  const attempt = await approveExamResult(attemptId);
+
+  if (!attempt) {
+    return res.status(404).json({
+      message:
+        "Exam attempt not found or result cannot be approved",
+    });
+  }
+
+  return res.json({
+    message: "Exam result approved successfully",
+    attempt: {
+      id: attempt.id,
+      status: attempt.status,
+      totalScore: attempt.total_score,
+      maxScore: attempt.max_score,
+      resultApproved: attempt.result_approved,
+      submittedAt: attempt.submitted_at,
+    },
+  });
 }
 
 export async function getExamDetail(req, res) {
@@ -401,14 +444,24 @@ export async function getAttemptStatus(req, res) {
   const exam = await getExamById(attempt.exam_id);
   const current = await enforceExpiry(attempt, exam);
 
-  res.json({
-    attempt: {
-      id: current.id,
-      status: current.status,
-      startedAt: current.started_at,
-      remainingSeconds: remainingSeconds(current, exam.duration_minutes),
-    },
-  });
+ res.json({
+  attempt: {
+    id: current.id,
+    status: current.status,
+    startedAt: current.started_at,
+    remainingSeconds: remainingSeconds(
+      current,
+      exam.duration_minutes
+    ),
+    resultApproved: current.result_approved,
+    totalScore: current.result_approved
+      ? current.total_score
+      : null,
+    maxScore: current.result_approved
+      ? current.max_score
+      : null,
+  },
+});
 }
 
 // Save a single mcq / true_false / short_answer answer. Coding
@@ -523,14 +576,15 @@ export async function finishExam(req, res) {
   current = await markAttemptStatus(attempt.id, finalStatus, { totalScore, maxScore });
 
   res.json({
-    attempt: {
-      id: current.id,
-      status: current.status,
-      totalScore: current.total_score,
-      maxScore: current.max_score,
-      submittedAt: current.submitted_at,
-    },
-  });
+  attempt: {
+    id: current.id,
+    status: current.status,
+    resultApproved: current.result_approved,
+    totalScore: null,
+    maxScore: null,
+    submittedAt: current.submitted_at,
+  },
+});
 }
 
 // -----------------------------------------------------------------------

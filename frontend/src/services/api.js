@@ -246,98 +246,97 @@ export const api = {
     return res.data.submission;
   },
 
- // ===============================
-// VIOLATION MONITORING
-// ===============================
+  // ===============================
+  // VIOLATION MONITORING
+  // ===============================
 
-startTestSession: async (
-  challengeIdOrOptions
-) => {
-  const body =
-    typeof challengeIdOrOptions === "object" &&
-    challengeIdOrOptions !== null
-      ? challengeIdOrOptions
-      : {
-          challengeId:
-            challengeIdOrOptions,
-        };
+  startTestSession: async (
+    challengeIdOrOptions
+  ) => {
+    const body =
+      typeof challengeIdOrOptions === "object" &&
+      challengeIdOrOptions !== null
+        ? challengeIdOrOptions
+        : {
+            challengeId: challengeIdOrOptions,
+          };
 
-  const res = await client.post(
-    "/violations/sessions/start",
-    body
-  );
+    const res = await client.post(
+      "/violations/sessions/start",
+      body
+    );
 
-  return res.data;
-},
+    return res.data;
+  },
 
-reportViolation: async ({
-  sessionId,
-  challengeId,
-  examAttemptId,
-  eventType,
-  applicationName,
-  windowTitle,
-  details,
-}) => {
-  const res = await client.post(
-    "/violations/report",
-    {
-      sessionId,
-      challengeId,
-      examAttemptId,
-      eventType,
-      applicationName,
-      windowTitle,
-      details,
-    }
-  );
+  reportViolation: async ({
+    sessionId,
+    challengeId,
+    examAttemptId,
+    eventType,
+    applicationName,
+    windowTitle,
+    details,
+  }) => {
+    const res = await client.post(
+      "/violations/report",
+      {
+        sessionId,
+        challengeId,
+        examAttemptId,
+        eventType,
+        applicationName,
+        windowTitle,
+        details,
+      }
+    );
 
-  return res.data;
-},
+    return res.data;
+  },
 
-finishTestSession: async (
-  sessionId
-) => {
-  const res = await client.post(
-    "/violations/sessions/finish",
-    {
-      sessionId,
-    }
-  );
+  finishTestSession: async (
+    sessionId
+  ) => {
+    const res = await client.post(
+      "/violations/sessions/finish",
+      {
+        sessionId,
+      }
+    );
 
-  return res.data.session;
-},
+    return res.data.session;
+  },
 
-// ===============================
-// ADMIN VIOLATIONS
-// ===============================
+  // ===============================
+  // ADMIN VIOLATIONS
+  // ===============================
 
-violations: async ({
-  limit = 100,
-  offset = 0,
-} = {}) => {
-  const res = await client.get(
-    "/violations",
-    {
-      params: {
-        limit,
-        offset,
-      },
-    }
-  );
+  violations: async ({
+    limit = 100,
+    offset = 0,
+  } = {}) => {
+    const res = await client.get(
+      "/violations",
+      {
+        params: {
+          limit,
+          offset,
+        },
+      }
+    );
 
-  return res.data.violations;
-},
+    return res.data.violations;
+  },
 
-sessionViolations: async (
-  sessionId
-) => {
-  const res = await client.get(
-    `/violations/session/${sessionId}`
-  );
+  sessionViolations: async (
+    sessionId
+  ) => {
+    const res = await client.get(
+      `/violations/session/${sessionId}`
+    );
 
-  return res.data.violations;
-},
+    return res.data.violations;
+  },
 
   // ===============================
   // EXAMS
@@ -403,7 +402,9 @@ sessionViolations: async (
   ) => {
     const res = await client.patch(
       `/exams/${id}/password`,
-      { password }
+      {
+        password,
+      }
     );
 
     return res.data.exam;
@@ -412,6 +413,10 @@ sessionViolations: async (
   deleteExam: async (id) => {
     await client.delete(`/exams/${id}`);
   },
+
+  // ===============================
+  // EXAM QUESTIONS
+  // ===============================
 
   createExamQuestion: async (
     examId,
@@ -425,13 +430,16 @@ sessionViolations: async (
     return res.data.question;
   },
 
+  // BULK QUESTION IMPORT
   createExamQuestionsBulk: async (
     examId,
     questions
   ) => {
     const res = await client.post(
       `/exams/${examId}/questions/bulk`,
-      { questions }
+      {
+        questions,
+      }
     );
 
     return res.data.questions;
@@ -459,13 +467,19 @@ sessionViolations: async (
     );
   },
 
+  // ===============================
+  // STUDENT EXAM
+  // ===============================
+
   verifyExamPassword: async (
     examId,
     password
   ) => {
     const res = await client.post(
       `/exams/${examId}/verify-password`,
-      { password }
+      {
+        password,
+      }
     );
 
     return res.data;
@@ -477,7 +491,9 @@ sessionViolations: async (
   ) => {
     const res = await client.post(
       `/exams/${examId}/start`,
-      { password }
+      {
+        password,
+      }
     );
 
     return res.data;
@@ -539,6 +555,20 @@ sessionViolations: async (
     return res.data;
   },
 
+  approveExamResult: async (
+    attemptId
+  ) => {
+    const res = await client.patch(
+      `/exams/attempts/${attemptId}/approve`
+    );
+
+    return res.data;
+  },
+
+  // ===============================
+  // ADMIN EXAM ANSWERS
+  // ===============================
+
   examAnswers: async ({
     studentId,
     examId,
@@ -555,7 +585,9 @@ sessionViolations: async (
 
     const res = await client.get(
       "/exams/answers",
-      { params }
+      {
+        params,
+      }
     );
 
     return res.data.answers;

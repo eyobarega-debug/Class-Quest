@@ -18,6 +18,7 @@ import {
   getExamAttemptsForAdmin,
   getExamAttemptDetailForAdmin,
   getAllExamAnswers,
+  approveResult,
 } from "../controllers/exam.controller.js";
 import {
   validateCreateExam,
@@ -42,6 +43,12 @@ router.get("/answers", authenticate, requireAdmin, asyncHandler(getAllExamAnswer
 
 router.get("/:id", authenticate, asyncHandler(getExamDetail));
 
+router.patch(
+  "/attempts/:attemptId/approve",
+  authenticate,
+  requireAdmin,
+  asyncHandler(approveResult)
+);
 // --- Admin: exam CRUD ---
 router.post("/", authenticate, requireAdmin, validateCreateExam, asyncHandler(postExam));
 router.patch("/:id", authenticate, requireAdmin, validateExamPatch, asyncHandler(patchExam));

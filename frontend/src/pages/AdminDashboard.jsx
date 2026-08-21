@@ -7,18 +7,42 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  FileText,
+  CheckCircle,
+  Clock,
+  XCircle,
 } from "lucide-react";
 
 import { api } from "../services/api";
 
 export default function AdminDashboard() {
+  // ==========================================
+  // DASHBOARD STATE
+  // ==========================================
+
   const [studentCount, setStudentCount] = useState(null);
   const [challengeCount, setChallengeCount] = useState(null);
+  const [examCount, setExamCount] = useState(null);
+
   const [violations, setViolations] = useState([]);
+  const [exams, setExams] = useState([]);
+
   const [loadingViolations, setLoadingViolations] =
     useState(true);
 
+  const [loadingExams, setLoadingExams] =
+    useState(true);
+
   const [expandedStudents, setExpandedStudents] =
+    useState({});
+
+  const [expandedExams, setExpandedExams] =
+    useState({});
+
+  const [examAttempts, setExamAttempts] =
+    useState({});
+
+  const [loadingAttempts, setLoadingAttempts] =
     useState({});
 
   // ==========================================
@@ -26,27 +50,78 @@ export default function AdminDashboard() {
   // ==========================================
 
   const loadDashboard = useCallback(async () => {
+    // ------------------------------------------
+    // STUDENTS
+    // ------------------------------------------
+
     try {
       const students = await api.students();
-      setStudentCount(students.length);
+
+      setStudentCount(
+        Array.isArray(students)
+          ? students.length
+          : 0
+      );
     } catch (error) {
       console.error(
         "Failed to load students:",
         error
       );
+
       setStudentCount(null);
     }
 
+    // ------------------------------------------
+    // CHALLENGES
+    // ------------------------------------------
+
     try {
       const challenges = await api.challenges();
-      setChallengeCount(challenges.length);
+
+      setChallengeCount(
+        Array.isArray(challenges)
+          ? challenges.length
+          : 0
+      );
     } catch (error) {
       console.error(
         "Failed to load challenges:",
         error
       );
+
       setChallengeCount(null);
     }
+
+    // ------------------------------------------
+    // EXAMS
+    // ------------------------------------------
+
+    try {
+      setLoadingExams(true);
+
+      const examData = await api.exams();
+
+      const examList = Array.isArray(examData)
+        ? examData
+        : [];
+
+      setExams(examList);
+      setExamCount(examList.length);
+    } catch (error) {
+      console.error(
+        "Failed to load exams:",
+        error
+      );
+
+      setExams([]);
+      setExamCount(null);
+    } finally {
+      setLoadingExams(false);
+    }
+
+    // ------------------------------------------
+    // VIOLATIONS
+    // ------------------------------------------
 
     try {
       setLoadingViolations(true);
@@ -56,12 +131,17 @@ export default function AdminDashboard() {
         offset: 0,
       });
 
-      setViolations(data || []);
+      setViolations(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (error) {
       console.error(
         "Failed to load violations:",
         error
       );
+
       setViolations([]);
     } finally {
       setLoadingViolations(false);
@@ -69,24 +149,47 @@ export default function AdminDashboard() {
   }, []);
 
   // ==========================================
-  // AUTO REFRESH
+  // INITIAL LOAD + AUTO REFRESH
   // ==========================================
 
   useEffect(() => {
     loadDashboard();
 
     const interval = setInterval(() => {
+      // Refresh violations
       api
         .violations({
           limit: 100,
           offset: 0,
         })
         .then((data) => {
-          setViolations(data || []);
+          setViolations(
+            Array.isArray(data)
+              ? data
+              : []
+          );
         })
         .catch((error) => {
           console.error(
             "Violation refresh failed:",
+            error
+          );
+        });
+
+      // Refresh exams
+      api
+        .exams()
+        .then((data) => {
+          const examList = Array.isArray(data)
+            ? data
+            : [];
+
+          setExams(examList);
+          setExamCount(examList.length);
+        })
+        .catch((error) => {
+          console.error(
+            "Exam refresh failed:",
             error
           );
         });
@@ -99,21 +202,25 @@ export default function AdminDashboard() {
   // GROUP VIOLATIONS BY STUDENT
   // ==========================================
 
-  const groupedViolations = violations.reduce(
-    (groups, violation) => {
-      const username =
-        violation.username || "Unknown";
+  const groupedViolations =
+    violations.reduce(
+      (groups, violation) => {
+        const username =
+          violation.username ||
+          "Unknown";
 
-      if (!groups[username]) {
-        groups[username] = [];
-      }
+        if (!groups[username]) {
+          groups[username] = [];
+        }
 
-      groups[username].push(violation);
+        groups[username].push(
+          violation
+        );
 
-      return groups;
-    },
-    {}
-  );
+        return groups;
+      },
+      {}
+    );
 
   // ==========================================
   // TOGGLE STUDENT
@@ -122,9 +229,112 @@ export default function AdminDashboard() {
   function toggleStudent(username) {
     setExpandedStudents((prev) => ({
       ...prev,
-      [username]: !prev[username],
+      [username]:
+        !prev[username],
     }));
   }
+
+  // ==========================================
+  // TOGGLE EXAM
+  // ==========================================
+
+  async function toggleExam(examId) {
+    const isCurrentlyExpanded =
+      !!expandedExams[examId];
+
+    setExpandedExams((prev) => ({
+      ...prev,
+      [examId]:
+        !prev[examId],
+    }));
+
+    // Only load attempts when opening
+    // and when they haven't already been loaded.
+    if (
+      !isCurrentlyExpanded &&
+      !examAttempts[examId]
+    ) {
+      try {
+        setLoadingAttempts((prev) => ({
+          ...prev,
+          [examId]: true,
+        }));
+
+        const attempts =
+          await api.examAttempts(
+            examId
+          );
+
+        setExamAttempts((prev) => ({
+          ...prev,
+          [examId]: Array.isArray(
+            attempts
+          )
+            ? attempts
+            : [],
+        }));
+      } catch (error) {
+        console.error(
+          "Failed to load exam attempts:",
+          error
+        );
+
+        setExamAttempts((prev) => ({
+          ...prev,
+          [examId]: [],
+        }));
+      } finally {
+        setLoadingAttempts((prev) => ({
+          ...prev,
+          [examId]: false,
+        }));
+      }
+    }
+  }
+
+  // ==========================================
+  // APPROVE RESULT
+  // ==========================================
+
+  async function handleApproveResult(
+    attemptId,
+    examId
+  ) {
+    try {
+      await api.approveExamResult(
+        attemptId
+      );
+
+      // Refresh attempts for this exam
+      const attempts =
+        await api.examAttempts(
+          examId
+        );
+
+      setExamAttempts((prev) => ({
+        ...prev,
+        [examId]: Array.isArray(
+          attempts
+        )
+          ? attempts
+          : [],
+      }));
+    } catch (error) {
+      console.error(
+        "Failed to approve exam result:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Failed to approve exam result."
+      );
+    }
+  }
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
     <div className="min-h-screen bg-white text-[#0F172A]">
@@ -146,8 +356,8 @@ export default function AdminDashboard() {
           </h1>
 
           <p className="text-[#64748B] mt-2 text-sm">
-            Monitor students, challenges, and
-            classroom activity.
+            Monitor students, challenges, exams,
+            and classroom activity.
           </p>
 
         </div>
@@ -181,11 +391,30 @@ export default function AdminDashboard() {
           />
 
           <Card
+            icon={FileText}
+            title="EXAMS"
+            description={
+              examCount === null
+                ? "Manage exams and student results."
+                : `${examCount} exam(s) available.`
+            }
+            danger={false}
+          />
+
+          <Card
             icon={AlertTriangle}
             title="VIOLATIONS"
             description={`${violations.length} recent violation(s) recorded.`}
             danger={violations.length > 0}
           />
+
+        </div>
+
+        {/* ==========================================
+            SYSTEM STATUS
+        ========================================== */}
+
+        <div className="mt-5">
 
           <Card
             icon={ShieldCheck}
@@ -195,6 +424,125 @@ export default function AdminDashboard() {
           />
 
         </div>
+
+        {/* ==========================================
+            EXAMS
+        ========================================== */}
+
+        <section className="mt-8 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] shadow-sm overflow-hidden">
+
+          {/* SECTION HEADER */}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-5 border-b border-[#E2E8F0] bg-white">
+
+            <div>
+
+              <p className="text-[#3B82F6] text-xs font-mono tracking-wider">
+                EXAM MANAGEMENT
+              </p>
+
+              <h2 className="text-xl font-bold text-[#0F172A] mt-1">
+                EXAMS & RESULTS
+              </h2>
+
+              <p className="text-[#64748B] text-xs mt-1">
+                Review exams and student attempts.
+              </p>
+
+            </div>
+
+            <button
+              onClick={loadDashboard}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#64748B] text-xs font-mono hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-[#EFF6FF] transition"
+            >
+              <RefreshCw size={14} />
+              REFRESH
+            </button>
+
+          </div>
+
+          {/* ==========================================
+              EXAM LOADING
+          ========================================== */}
+
+          {loadingExams ? (
+
+            <div className="p-10 text-center bg-white">
+
+              <RefreshCw
+                className="mx-auto text-[#3B82F6] mb-3 animate-spin"
+                size={28}
+              />
+
+              <p className="text-[#64748B] font-mono text-sm">
+                LOADING EXAMS...
+              </p>
+
+            </div>
+
+          ) : exams.length === 0 ? (
+
+            <div className="p-10 text-center bg-white">
+
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#EFF6FF] border border-[#DBEAFE] mb-4">
+
+                <FileText
+                  className="text-[#3B82F6]"
+                  size={25}
+                />
+
+              </div>
+
+              <p className="text-[#0F172A] font-semibold">
+                No exams found
+              </p>
+
+              <p className="text-[#64748B] text-sm mt-1">
+                Create an exam to see it here.
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="divide-y divide-[#E2E8F0]">
+
+              {exams.map((exam) => (
+
+                <ExamGroup
+                  key={exam.id}
+                  exam={exam}
+                  isExpanded={
+                    !!expandedExams[exam.id]
+                  }
+                  attempts={
+                    examAttempts[exam.id] || []
+                  }
+                  loadingAttempts={
+                    !!loadingAttempts[
+                      exam.id
+                    ]
+                  }
+                  onToggle={() =>
+                    toggleExam(exam.id)
+                  }
+                  onApprove={(
+                    attemptId
+                  ) =>
+                    handleApproveResult(
+                      attemptId,
+                      exam.id
+                    )
+                  }
+                />
+
+              ))}
+
+            </div>
+
+          )}
+
+        </section>
 
         {/* ==========================================
             VIOLATION LOGS
@@ -367,7 +715,6 @@ export default function AdminDashboard() {
   );
 }
 
-
 // ==========================================
 // ADMIN CARD
 // ==========================================
@@ -429,6 +776,354 @@ function Card({
   );
 }
 
+// ==========================================
+// EXAM GROUP
+// ==========================================
+
+function ExamGroup({
+  exam,
+  isExpanded,
+  attempts,
+  loadingAttempts,
+  onToggle,
+  onApprove,
+}) {
+  return (
+    <div>
+
+      {/* ==========================================
+          EXAM HEADER
+      ========================================== */}
+
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full text-left px-5 py-5 bg-white hover:bg-[#F8FAFC] transition"
+      >
+
+        <div className="flex items-center justify-between gap-4">
+
+          <div className="flex items-center gap-3 min-w-0">
+
+            {isExpanded ? (
+              <ChevronDown
+                size={18}
+                className="text-[#3B82F6]"
+              />
+            ) : (
+              <ChevronRight
+                size={18}
+                className="text-[#64748B]"
+              />
+            )}
+
+            <div className="w-10 h-10 rounded-lg bg-[#EFF6FF] border border-[#DBEAFE] flex items-center justify-center flex-shrink-0">
+
+              <FileText
+                size={20}
+                className="text-[#3B82F6]"
+              />
+
+            </div>
+
+            <div className="min-w-0">
+
+              <h3 className="font-semibold text-[#0F172A] truncate">
+                {exam.title}
+              </h3>
+
+              <p className="text-xs text-[#64748B] mt-1">
+                {exam.duration_minutes} minute
+                {exam.duration_minutes === 1
+                  ? ""
+                  : "s"}
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+
+            {exam.is_published ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] text-[#10B981] text-xs font-mono">
+                <CheckCircle size={12} />
+                PUBLISHED
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#F8FAFC] border border-[#CBD5E1] text-[#64748B] text-xs font-mono">
+                <XCircle size={12} />
+                DRAFT
+              </span>
+            )}
+
+          </div>
+
+        </div>
+
+      </button>
+
+      {/* ==========================================
+          ATTEMPTS
+      ========================================== */}
+
+      {isExpanded && (
+
+        <div className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
+
+          {loadingAttempts ? (
+
+            <div className="p-8 text-center">
+
+              <RefreshCw
+                size={24}
+                className="mx-auto mb-3 text-[#3B82F6] animate-spin"
+              />
+
+              <p className="text-[#64748B] text-sm font-mono">
+                LOADING STUDENT ATTEMPTS...
+              </p>
+
+            </div>
+
+          ) : attempts.length === 0 ? (
+
+            <div className="p-8 text-center">
+
+              <Clock
+                size={28}
+                className="mx-auto mb-3 text-[#94A3B8]"
+              />
+
+              <p className="text-[#334155] font-semibold">
+                No student attempts yet
+              </p>
+
+              <p className="text-[#64748B] text-sm mt-1">
+                Students have not started this exam.
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="overflow-x-auto">
+
+              <table className="w-full text-left">
+
+                <thead>
+
+                  <tr className="border-b border-[#E2E8F0] text-xs text-[#64748B] font-mono">
+
+                    <th className="px-5 py-3">
+                      STUDENT
+                    </th>
+
+                    <th className="px-5 py-3">
+                      STATUS
+                    </th>
+
+                    <th className="px-5 py-3">
+                      SCORE
+                    </th>
+
+                    <th className="px-5 py-3">
+                      SUBMITTED
+                    </th>
+
+                    <th className="px-5 py-3">
+                      RESULT
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {attempts.map(
+                    (attempt) => (
+
+                      <ExamAttemptRow
+                        key={attempt.id}
+                        attempt={attempt}
+                        onApprove={() =>
+                          onApprove(
+                            attempt.id
+                          )
+                        }
+                      />
+
+                    )
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </div>
+
+      )}
+
+    </div>
+  );
+}
+
+// ==========================================
+// EXAM ATTEMPT ROW
+// ==========================================
+
+function ExamAttemptRow({
+  attempt,
+  onApprove,
+}) {
+  const status =
+    (
+      attempt.status ||
+      "unknown"
+    ).toLowerCase();
+
+  const statusClass =
+    status === "submitted"
+      ? "text-[#10B981] bg-[#ECFDF5] border-[#A7F3D0]"
+      : status === "expired"
+      ? "text-[#EF4444] bg-[#FEF2F2] border-[#FECACA]"
+      : status === "in_progress"
+      ? "text-[#F59E0B] bg-[#FFFBEB] border-[#FDE68A]"
+      : "text-[#64748B] bg-[#F8FAFC] border-[#CBD5E1]";
+
+  const submittedDate =
+    attempt.submittedAt ||
+    attempt.submitted_at;
+
+  const formattedDate =
+    submittedDate
+      ? new Date(
+          submittedDate
+        ).toLocaleString()
+      : "Not submitted";
+
+  const totalScore =
+    attempt.totalScore ??
+    attempt.total_score ??
+    0;
+
+  const maxScore =
+    attempt.maxScore ??
+    attempt.max_score ??
+    0;
+
+  const approved =
+    attempt.resultApproved ??
+    attempt.result_approved;
+
+  return (
+    <tr className="border-b border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] transition">
+
+      {/* STUDENT */}
+
+      <td className="px-5 py-4">
+
+        <div>
+
+          <p className="text-sm font-semibold text-[#0F172A]">
+            {attempt.student?.name ||
+              attempt.full_name ||
+              "Unknown Student"}
+          </p>
+
+          <p className="text-xs text-[#94A3B8] font-mono mt-1">
+            {attempt.student?.username ||
+              attempt.username ||
+              "Unknown"}
+          </p>
+
+        </div>
+
+      </td>
+
+      {/* STATUS */}
+
+      <td className="px-5 py-4">
+
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded-md border text-xs font-mono ${statusClass}`}
+        >
+          {status.replace(
+            "_",
+            " "
+          ).toUpperCase()}
+        </span>
+
+      </td>
+
+      {/* SCORE */}
+
+      <td className="px-5 py-4">
+
+        <span className="text-[#0F172A] text-sm font-semibold">
+          {totalScore}/{maxScore}
+        </span>
+
+      </td>
+
+      {/* SUBMITTED */}
+
+      <td className="px-5 py-4">
+
+        <span className="text-[#64748B] text-xs font-mono whitespace-nowrap">
+          {formattedDate}
+        </span>
+
+      </td>
+
+      {/* RESULT */}
+
+      <td className="px-5 py-4">
+
+        {approved ? (
+
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] text-[#10B981] text-xs font-mono">
+
+            <CheckCircle size={12} />
+
+            APPROVED
+
+          </span>
+
+        ) : status ===
+          "submitted" ||
+          status === "expired" ? (
+
+          <button
+            type="button"
+            onClick={onApprove}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[#3B82F6] text-xs font-mono hover:bg-[#DBEAFE] transition"
+          >
+
+            <CheckCircle size={12} />
+
+            APPROVE
+
+          </button>
+
+        ) : (
+
+          <span className="text-[#94A3B8] text-xs font-mono">
+            WAITING
+          </span>
+
+        )}
+
+      </td>
+
+    </tr>
+  );
+}
 
 // ==========================================
 // STUDENT VIOLATION GROUP
@@ -440,7 +1135,8 @@ function StudentViolationGroup({
   isExpanded,
   onToggle,
 }) {
-  const firstViolation = violations[0];
+  const firstViolation =
+    violations[0];
 
   return (
     <>
@@ -527,27 +1223,31 @@ function StudentViolationGroup({
       ========================================== */}
 
       {isExpanded &&
-        violations.map((violation) => (
+        violations.map(
+          (violation) => (
 
-          <ViolationRow
-            key={violation.id}
-            violation={violation}
-          />
+            <ViolationRow
+              key={violation.id}
+              violation={violation}
+            />
 
-        ))}
+          )
+        )}
 
     </>
   );
 }
 
-
 // ==========================================
 // INDIVIDUAL VIOLATION ROW
 // ==========================================
 
-function ViolationRow({ violation }) {
+function ViolationRow({
+  violation,
+}) {
   const severity = (
-    violation.severity || "medium"
+    violation.severity ||
+    "medium"
   ).toLowerCase();
 
   // ==========================================
@@ -567,11 +1267,12 @@ function ViolationRow({ violation }) {
   // DATE
   // ==========================================
 
-  const date = violation.created_at
-    ? new Date(
-        violation.created_at
-      ).toLocaleString()
-    : "Unknown";
+  const date =
+    violation.created_at
+      ? new Date(
+          violation.created_at
+        ).toLocaleString()
+      : "Unknown";
 
   return (
     <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC] hover:bg-[#F1F5F9] transition">

@@ -324,6 +324,25 @@ export async function getAttemptById(id) {
   return result.rows[0] || null;
 }
 
+// ---------------------------------------------------------------------
+// Admin: approve student's exam result
+// ---------------------------------------------------------------------
+
+export async function approveExamResult(attemptId) {
+  const result = await pool.query(
+    `
+    UPDATE exam_attempts
+    SET result_approved = true
+    WHERE id = $1
+      AND status IN ('submitted', 'expired')
+    RETURNING *
+    `,
+    [attemptId]
+  );
+
+  return result.rows[0] || null;
+}
+
 export async function createAttempt(examId, userId) {
   const result = await pool.query(
     `INSERT INTO exam_attempts (exam_id, user_id)
