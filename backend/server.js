@@ -12,6 +12,7 @@ const examRoutes = require('./routes/examRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 
 const app = express();
+app.set("trust proxy", 1);
 
 // --- Global middleware -------------------------------------------------
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
