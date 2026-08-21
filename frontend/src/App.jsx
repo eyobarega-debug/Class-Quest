@@ -30,12 +30,16 @@ import AdminViolations from "./pages/AdminViolations";
 function Layout() {
   return (
     <div className="min-h-screen bg-[var(--color-vellum)]">
-      <Navbar />
+      <div className="sticky top-0 z-20">
+        <Navbar />
+      </div>
 
       <div className="flex">
-        <Sidebar />
+        <div className="hidden lg:block sticky top-16 self-start h-[calc(100vh-64px)] overflow-y-auto">
+          <Sidebar />
+        </div>
 
-        <main className="flex-1 p-5 md:p-8">
+        <main className="flex-1 p-5 md:p-8 min-w-0">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />

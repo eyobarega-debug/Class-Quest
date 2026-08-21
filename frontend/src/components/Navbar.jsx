@@ -6,7 +6,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="h-16 border-b border-[var(--color-line)] bg-[var(--color-vellum-raised)]/95 backdrop-blur flex items-center justify-between px-6">
+    <header className="h-16 border-b border-[var(--color-line)] bg-[var(--color-vellum-raised)]/95 backdrop-blur flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center gap-2.5">
         <Compass className="text-[var(--color-brass)]" size={24} strokeWidth={2} />
 

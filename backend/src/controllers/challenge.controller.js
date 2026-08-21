@@ -222,7 +222,19 @@ function runJavaScript(sourceCode, input, timeoutMs) {
 }
 
 // Python execution (mirrors runCpp: write to a temp file, run it,
-// capture stdout). Requires python3 to be on PATH of the server.
+// capture stdout). Requires a real Python install on the server's
+// PATH. Windows ships a "python"/"python3" shim that isn't a real
+// interpreter unless Python is actually installed — it just prints
+// an "install from the Microsoft Store" message and exits non-zero,
+// which looks like a normal failed run rather than "command missing"
+// (no ENOENT), so that specific message is detected explicitly below.
+let resolvedPythonCommand = null;
+
+function isPythonUnavailableError(err) {
+  const text = `${err.stderr || ""} ${err.message || ""}`;
+  return err.code === "ENOENT" || /was not found/i.test(text) || /Microsoft Store/i.test(text);
+}
+
 async function runPython(sourceCode, input, timeoutMs) {
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "classquest-")
@@ -233,16 +245,36 @@ async function runPython(sourceCode, input, timeoutMs) {
   try {
     await writeFile(sourcePath, sourceCode, "utf8");
 
-    const { stdout } = await execFileAsync(
-      "python3",
-      [sourcePath],
-      {
-        input,
-        timeout: timeoutMs,
-      }
-    );
+    const candidates = resolvedPythonCommand
+      ? [resolvedPythonCommand]
+      : process.platform === "win32"
+        ? ["python", "py", "python3"]
+        : ["python3", "python"];
 
-    return stdout.trim();
+    let lastError;
+
+    for (const cmd of candidates) {
+      try {
+        const { stdout } = await execFileAsync(
+          cmd,
+          [sourcePath],
+          { input, timeout: timeoutMs }
+        );
+
+        resolvedPythonCommand = cmd; // remember what worked, skip probing next time
+        return stdout.trim();
+      } catch (err) {
+        lastError = err;
+        if (!isPythonUnavailableError(err)) {
+          throw err; // a real error in the student's code — propagate immediately
+        }
+        // otherwise this command isn't a real Python install; try the next one
+      }
+    }
+
+    throw new Error(
+      "Python is not installed on this server (or not on PATH). Install Python from python.org, ensure 'Add python.exe to PATH' is checked during setup, then restart the backend."
+    );
   } finally {
     await unlink(sourcePath).catch(() => {});
     await fs.rm(tempDir, {

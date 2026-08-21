@@ -74,7 +74,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="hidden lg:block w-64 border-r border-[var(--color-line)] bg-[var(--color-vellum-raised)] min-h-[calc(100vh-64px)]">
+    <aside className="w-64 h-full border-r border-[var(--color-line)] bg-[var(--color-vellum-raised)]">
       <nav className="p-3 space-y-1">
         {links.map((link) => {
           const Icon = link.icon;
