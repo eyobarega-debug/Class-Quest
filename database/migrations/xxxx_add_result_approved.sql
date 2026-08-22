@@ -1,2 +1,0 @@
-ALTER TABLE exam_attempts
-ADD COLUMN result_approved BOOLEAN NOT NULL DEFAULT FALSE;

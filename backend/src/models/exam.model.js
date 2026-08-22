@@ -214,7 +214,7 @@ export async function createExamQuestion({
 // click back into one they already finished.
 export async function getAttemptStatusesForUser(userId) {
   const result = await pool.query(
-    `SELECT exam_id, status, total_score, max_score
+    `SELECT exam_id, status, total_score, max_score, result_approved
      FROM exam_attempts
      WHERE user_id = $1`,
     [userId]
