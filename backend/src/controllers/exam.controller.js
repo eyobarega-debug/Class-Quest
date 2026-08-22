@@ -607,12 +607,12 @@ export async function getExamAttemptsForAdmin(req, res) {
       status: a.status,
       totalScore: a.total_score,
       maxScore: a.max_score,
+      resultApproved: a.result_approved,
       startedAt: a.started_at,
       submittedAt: a.submitted_at,
     })),
   });
 }
-
 // Full detail of exactly what one student answered/submitted for
 // every question on the exam, including coding source code.
 export async function getExamAttemptDetailForAdmin(req, res) {
