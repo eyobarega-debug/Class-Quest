@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "auto-launch": "^5.0.6",
     "get-windows": "^9.3.0"
   },
   "devDependencies": {
@@ -28,7 +29,12 @@
     ],
     "win": {
       "target": "nsis",
+      "icon": "build/icon.ico",
       "artifactName": "ClassQuest-Monitor-Setup.${ext}"
     }
+  },
+  "allowScripts": {
+    "electron-winstaller@5.4.0": true,
+    "get-windows@9.3.0": true
   }
 }

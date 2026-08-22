@@ -8,6 +8,8 @@ const {
   activeWindow,
 } = require("get-windows");
 
+const AutoLaunch = require("auto-launch");
+
 const MONITOR_PORT = 3847;
 
 // ==========================================
@@ -631,10 +633,6 @@ function startServer() {
   );
 }
 
-// ==========================================
-// ELECTRON START
-// ==========================================
-
 app.whenReady().then(() => {
   startServer();
 
@@ -642,7 +640,31 @@ app.whenReady().then(() => {
     checkActiveWindow,
     1000
   );
+
+  // Register to start automatically on login, so students only ever
+  // have to run the installer once. Only for the real installed app
+  // (app.isPackaged), not during `npm start` dev runs.
+  if (app.isPackaged) {
+    const autoLauncher = new AutoLaunch({
+      name: "ClassQuest Monitor",
+      path: app.getPath("exe"),
+    });
+
+    autoLauncher
+      .isEnabled()
+      .then((isEnabled) => {
+        if (!isEnabled) {
+          autoLauncher.enable().catch((err) => {
+            console.error("Failed to enable auto-launch:", err.message);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to check auto-launch status:", err.message);
+      });
+  }
 });
+
 
 // Keep monitor running in background
 app.on(
