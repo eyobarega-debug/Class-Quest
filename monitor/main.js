@@ -69,13 +69,15 @@ function sendJSON(
 
     "Access-Control-Allow-Headers":
       "Content-Type",
+
+    "Access-Control-Allow-Private-Network":
+      "true",
   });
 
   res.end(
     JSON.stringify(data)
   );
 }
-
 // ==========================================
 // REPORT VIOLATION TO BACKEND
 // ==========================================
