@@ -77,7 +77,7 @@ export async function getExams(req, res) {
     attemptRows.map((a) => [a.exam_id, a])
   );
 
-  const examsWithStatus = exams.map((exam) => {
+   const examsWithStatus = exams.map((exam) => {
     const attempt = attemptByExam.get(exam.id);
 
     return {
@@ -85,8 +85,13 @@ export async function getExams(req, res) {
       studentAttempt: attempt
         ? {
             status: attempt.status,
-            totalScore: attempt.total_score,
-            maxScore: attempt.max_score,
+            resultApproved: attempt.result_approved,
+            totalScore: attempt.result_approved
+              ? attempt.total_score
+              : null,
+            maxScore: attempt.result_approved
+              ? attempt.max_score
+              : null,
           }
         : null,
     };

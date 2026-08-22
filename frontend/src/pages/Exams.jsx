@@ -34,11 +34,13 @@ export default function Exams() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6">
           {exams.map((exam) => {
-            const attempt = exam.myAttempt || exam.userAttempt || exam.attempt;
+                        const attempt = exam.studentAttempt;
             const isFinished = attempt && attempt.status !== "in_progress";
 
             // COMPLETED EXAM CARD (DISABLED & UNCLICKABLE)
             if (isFinished) {
+              const approved = attempt.resultApproved;
+
               return (
                 <div
                   key={exam.id}
@@ -47,8 +49,14 @@ export default function Exams() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h2 className="text-white font-bold">{exam.title}</h2>
-                      <span className="text-[10px] font-mono px-2 py-0.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded">
-                        COMPLETED
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                          approved
+                            ? "bg-green-500/10 border-green-500/30 text-green-400"
+                            : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                        }`}
+                      >
+                        {approved ? "RESULT APPROVED" : "PENDING REVIEW"}
                       </span>
                     </div>
                     <p className="text-gray-500 text-sm mb-4 line-clamp-2">{exam.description}</p>
@@ -56,14 +64,19 @@ export default function Exams() {
 
                   <div className="flex items-center justify-between text-xs font-mono pt-3 border-t border-gray-800/60">
                     <span className="text-gray-500">{exam.duration_minutes} min</span>
-                    <span className="text-green-400 flex items-center gap-1">
-                      ✓ Completed
-                    </span>
+                    {approved ? (
+                      <span className="text-green-400 flex items-center gap-1">
+                        ✓ {attempt.totalScore} / {attempt.maxScore}
+                      </span>
+                    ) : (
+                      <span className="text-yellow-400 flex items-center gap-1">
+                        ⏳ Awaiting approval
+                      </span>
+                    )}
                   </div>
                 </div>
               );
             }
-
             // ACTIVE EXAM CARD (CLICKABLE)
             return (
               <Link
