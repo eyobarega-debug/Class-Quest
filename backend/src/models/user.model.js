@@ -110,6 +110,30 @@ export async function setActive(id, isActive) {
   return result.rows[0] || null;
 }
 
+
+// Ranked by XP (ties broken by rating). Solved count is distinct
+// challenges with at least one accepted submission. Used by the
+// Coding Arena leaderboard.
+export async function getLeaderboard(limit = 50) {
+  const result = await pool.query(
+    `
+    SELECT
+      u.id, u.username, u.full_name, u.avatar_url,
+      u.xp, u.rating, u.streak,
+      COUNT(DISTINCT s.challenge_id) FILTER (WHERE s.status = 'accepted') AS solved_count
+    FROM users u
+    LEFT JOIN submissions s ON s.user_id = u.id
+    WHERE u.role = 'student' AND u.is_active = true
+    GROUP BY u.id
+    ORDER BY u.xp DESC, u.rating DESC, u.username ASC
+    LIMIT $1
+    `,
+    [limit]
+  );
+
+  return result.rows;
+}
+
 // DELETE STUDENT
 export async function deleteStudent(id) {
   const result = await pool.query(

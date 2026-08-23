@@ -7,6 +7,7 @@ import {
   Timer,
   ClipboardList,
   ShieldAlert,
+  Trophy,
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -26,6 +27,11 @@ export default function Sidebar() {
       path: "/challenges",
       icon: Code2,
     },
+    {
+  name: "Leaderboard",
+  path: "/leaderboard",
+  icon: Trophy,
+},
     {
       name: "Exams",
       path: "/exams",

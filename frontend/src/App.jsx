@@ -26,6 +26,7 @@ import AdminChallenges from "./pages/AdminChallenges";
 import AdminExams from "./pages/AdminExams";
 import AdminSubmissions from "./pages/AdminSubmissions";
 import AdminViolations from "./pages/AdminViolations";
+import Leaderboard from "./pages/Leaderboard";
 
 function Layout() {
   return (
@@ -45,6 +46,7 @@ function Layout() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/challenges" element={<Challenges />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/challenges/:slug" element={<ChallengeDetail />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/exams/:id" element={<ExamPassword />} />

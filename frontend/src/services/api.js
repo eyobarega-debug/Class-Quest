@@ -467,6 +467,11 @@ export const api = {
     );
   },
 
+    leaderboard: async () => {
+    const res = await client.get("/users/leaderboard");
+    return res.data.leaderboard;
+  },
+
   // ===============================
   // STUDENT EXAM
   // ===============================

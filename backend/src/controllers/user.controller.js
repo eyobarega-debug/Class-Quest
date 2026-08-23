@@ -7,6 +7,7 @@ import {
   setActive,
   deleteStudent as deleteStudentFromDB,
   formatUser,
+  getLeaderboard,
 } from "../models/user.model.js";
 
 export async function getStudents(req, res) {
@@ -14,6 +15,24 @@ export async function getStudents(req, res) {
 
   res.json({
     students: students.map(formatUser),
+  });
+}
+
+export async function getLeaderboardHandler(req, res) {
+  const rows = await getLeaderboard(50);
+
+  res.json({
+    leaderboard: rows.map((u, i) => ({
+      rank: i + 1,
+      id: u.id,
+      username: u.username,
+      name: u.full_name,
+      avatarUrl: u.avatar_url,
+      xp: u.xp || 0,
+      rating: u.rating,
+      streak: u.streak,
+      solved: Number(u.solved_count) || 0,
+    })),
   });
 }
 
