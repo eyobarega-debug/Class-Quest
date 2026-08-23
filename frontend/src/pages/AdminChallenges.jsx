@@ -33,6 +33,10 @@ export default function AdminChallenges() {
 
   const [testCases, setTestCases] = useState([{ ...emptyTestCase }]);
 
+  // Bulk JSON import
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState(null);
+
   useEffect(() => {
     loadChallenges();
   }, []);
@@ -117,6 +121,153 @@ export default function AdminChallenges() {
     }
   }
 
+  // ===============================
+  // BULK JSON IMPORT
+  // ===============================
+
+  function downloadSampleJSON() {
+    const sample = [
+      {
+        title: "Sum Two Numbers",
+        description:
+          "Read two space-separated integers from input and print their sum.",
+        difficulty: "easy",
+        category: "Basics",
+        xpReward: 100,
+        language: "javascript",
+        starterCode:
+          "function solve(input) {\n  // input is a string, e.g. \"2 3\"\n  const [a, b] = input.trim().split(\" \").map(Number);\n  return a + b;\n}",
+        testCases: [
+          { input: "2 3", expectedOutput: "5", isHidden: false },
+          { input: "10 20", expectedOutput: "30", isHidden: false },
+          { input: "-5 5", expectedOutput: "0", isHidden: true },
+        ],
+      },
+      {
+        title: "Reverse a String",
+        description: "Read a string from input and print it reversed.",
+        difficulty: "easy",
+        category: "Strings",
+        xpReward: 100,
+        language: "javascript",
+        starterCode:
+          "function solve(input) {\n  return input.trim().split(\"\").reverse().join(\"\");\n}",
+        testCases: [
+          { input: "hello", expectedOutput: "olleh", isHidden: false },
+          { input: "classquest", expectedOutput: "tseuqssalc", isHidden: true },
+        ],
+      },
+    ];
+
+    const blob = new Blob([JSON.stringify(sample, null, 2)], {
+      type: "application/json",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "classquest-questions-template.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setMessage("");
+    setImportSummary(null);
+    setImporting(true);
+
+    try {
+      const text = await file.text();
+      let items;
+
+      try {
+        items = JSON.parse(text);
+      } catch {
+        throw new Error("That file isn't valid JSON. Check for a stray comma or missing bracket.");
+      }
+
+      if (!Array.isArray(items)) {
+        throw new Error("The JSON file must contain an array of questions: [ { ... }, { ... } ]");
+      }
+
+      const results = { succeeded: [], failed: [] };
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const label = item?.title || `Item ${i + 1}`;
+
+        try {
+          if (!item.title || !item.description) {
+            throw new Error("Missing required field: title and description are both required.");
+          }
+
+          const languages =
+            item.languages && Array.isArray(item.languages)
+              ? item.languages
+              : [
+                  {
+                    language: item.language || "javascript",
+                    starterCode:
+                      item.starterCode ||
+                      starterCodes[item.language || "javascript"] ||
+                      "",
+                  },
+                ];
+
+          const testCasesPayload = (item.testCases || []).map((tc) => ({
+            input: tc.input || "",
+            expectedOutput: tc.expectedOutput,
+            isHidden: Boolean(tc.isHidden),
+          }));
+
+          if (testCasesPayload.length === 0) {
+            throw new Error("At least one test case is required.");
+          }
+
+          if (testCasesPayload.some((tc) => tc.expectedOutput === undefined || tc.expectedOutput === "")) {
+            throw new Error("Every test case needs an expectedOutput.");
+          }
+
+          await api.createChallenge({
+            title: item.title,
+            description: item.description,
+            difficulty: item.difficulty || "easy",
+            category: item.category || "",
+            xpReward: Number(item.xpReward) || 100,
+            languages,
+            testCases: testCasesPayload,
+          });
+
+          results.succeeded.push(label);
+        } catch (err) {
+          results.failed.push({ label, reason: err.message });
+        }
+      }
+
+      setImportSummary(results);
+
+      if (results.succeeded.length > 0) {
+        setMessage(
+          `Imported ${results.succeeded.length} of ${items.length} question${items.length === 1 ? "" : "s"}.`
+        );
+        loadChallenges();
+      }
+
+      if (results.failed.length > 0 && results.succeeded.length === 0) {
+        setError("None of the questions could be imported. See details below.");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImporting(false);
+      e.target.value = ""; // allow re-selecting the same file
+    }
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-[var(--color-ink)] mb-2">MANAGE CODING CHALLENGES</h1>
@@ -129,6 +280,61 @@ export default function AdminChallenges() {
         </Link>{" "}
         page, where you can also mix them with coding questions in one exam.
       </p>
+
+      <div className="ledger-card p-6 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+          <h2 className="text-[var(--color-ink)] font-bold">BULK IMPORT FROM JSON</h2>
+
+          <button
+            type="button"
+            onClick={downloadSampleJSON}
+            className="text-xs text-[var(--color-brass-dark)] hover:underline"
+          >
+            DOWNLOAD SAMPLE TEMPLATE
+          </button>
+        </div>
+
+        <p className="text-sm text-[var(--color-ink-muted)] mb-4">
+          Upload a JSON file containing an array of questions to create them all at once.
+          Each question needs at least <code>title</code>, <code>description</code>, and one
+          <code> testCases</code> entry with an <code>expectedOutput</code>. Download the
+          template above for the exact shape.
+        </p>
+
+        <label className="inline-block cursor-pointer bg-[var(--color-brass)] text-[var(--color-vellum)] font-bold px-5 py-2.5 hover:bg-[var(--color-brass-dark)] transition-colors">
+          {importing ? "IMPORTING..." : "CHOOSE JSON FILE"}
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImportFile}
+            disabled={importing}
+            className="hidden"
+          />
+        </label>
+
+        {importSummary && (
+          <div className="mt-4 text-sm space-y-2">
+            {importSummary.succeeded.length > 0 && (
+              <div className="text-[var(--color-teal-dark)]">
+                ✓ Created: {importSummary.succeeded.join(", ")}
+              </div>
+            )}
+
+            {importSummary.failed.length > 0 && (
+              <div className="text-[var(--color-red-dark)]">
+                <div className="font-semibold mb-1">✕ Failed:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {importSummary.failed.map((f, i) => (
+                    <li key={i}>
+                      <strong>{f.label}</strong>: {f.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="grid xl:grid-cols-3 gap-6">
         <form onSubmit={handleSubmit} className="xl:col-span-2 ledger-card p-6 space-y-3">
