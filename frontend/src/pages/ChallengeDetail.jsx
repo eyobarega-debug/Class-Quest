@@ -665,14 +665,13 @@ export default function ChallengeDetail() {
           />
 
           <div className="border-t border-[var(--color-line)]/30 p-3 flex gap-3">
-            <button
+                        <button
               onClick={runCode}
-              disabled={running}
-              className="px-5 py-2 bg-[#241e19] border border-[#3a3025] text-[#f1e9dc] hover:border-[var(--color-brass)] disabled:opacity-50"
+              disabled
+              title="Run is temporarily disabled for tonight's competition — use Submit."
+              className="px-5 py-2 bg-[#241e19] border border-[#3a3025] text-[#f1e9dc] hover:border-[var(--color-brass)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {running
-                ? "RUNNING..."
-                : "▶ RUN"}
+              ▶ RUN (disabled for competition)
             </button>
 
             <button

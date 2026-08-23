@@ -306,7 +306,7 @@ async function runCpp(sourceCode, input, timeoutMs) {
         exePath,
       ],
       {
-        timeout: timeoutMs,
+        timeout:  15000,
       }
     );
 

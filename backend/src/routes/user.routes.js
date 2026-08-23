@@ -4,6 +4,7 @@ import {
   createStudent,
   updateStudentStatus,
   deleteStudent,
+  getLeaderboardHandler,
 } from "../controllers/user.controller.js";
 
 import { validateCreateStudent } from "../validators/user.validator.js";
@@ -13,7 +14,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = express.Router();
 
-// Every route here is admin-only
+// Any logged-in user (student or admin) can view the leaderboard.
+// Must be registered before the admin-only gate below.
+router.get("/leaderboard", authenticate, asyncHandler(getLeaderboardHandler));
+
+// Every route below here is admin-only
 router.use(authenticate, requireAdmin);
 
 router.get("/", asyncHandler(getStudents));
