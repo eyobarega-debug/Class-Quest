@@ -42,15 +42,15 @@ export default function Sidebar() {
       path: "/profile",
       icon: User,
     },
-    {
-      name: "Manage Challenges",
-      path: "/admin/challenges",
-      icon: Code2,
-    },
   ];
 
   if (user?.role === "admin") {
     links.push(
+      {
+        name: "Manage Challenges",
+        path: "/admin/challenges",
+        icon: Code2,
+      },
       {
         name: "Admin Dashboard",
         path: "/admin",
