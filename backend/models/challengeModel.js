@@ -11,6 +11,7 @@ export async function listChallenges({
   search,
   limit = 50,
   offset = 0,
+  userId,
 } = {}) {
   const conditions = ["is_published = true"];
   const params = [];
@@ -44,6 +45,36 @@ export async function listChallenges({
       )
     `;
   }
+
+    // Per-user submission stats (attempts used out of the 4-attempt
+  // cap, and whether already solved) — only joined when a userId is
+  // given, so this stays a no-op for admin/unauthenticated listings.
+  let attemptsSelect = "NULL AS attempts_used, false AS solved";
+  let attemptsJoin = "";
+
+  if (userId) {
+    params.push(userId);
+    const userIdParamIndex = params.length;
+
+    attemptsSelect = `
+      COALESCE(user_stats.attempts_used, 0) AS attempts_used,
+      COALESCE(user_stats.solved, false) AS solved
+    `;
+
+    attemptsJoin = `
+      LEFT JOIN (
+        SELECT
+          challenge_id,
+          COUNT(*)::int AS attempts_used,
+          BOOL_OR(status = 'accepted') AS solved
+        FROM submissions
+        WHERE user_id = $${userIdParamIndex}
+          AND exam_attempt_id IS NULL
+        GROUP BY challenge_id
+      ) user_stats ON user_stats.challenge_id = challenges.id
+    `;
+  }
+
 
   params.push(limit);
   params.push(offset);

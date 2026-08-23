@@ -31,7 +31,13 @@ function slugify(title) {
 
 export async function getChallenges(req, res) {
   const { difficulty, category, language, search } = req.query;
-  const challenges = await listChallenges({ difficulty, category, language, search });
+  const challenges = await listChallenges({
+    difficulty,
+    category,
+    language,
+    search,
+    userId: req.user?.id,
+  });
   res.json({ challenges });
 }
 
