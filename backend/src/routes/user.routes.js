@@ -5,6 +5,7 @@ import {
   updateStudentStatus,
   deleteStudent,
   getLeaderboardHandler,
+  resetStudentPassword,
 } from "../controllers/user.controller.js";
 
 import { validateCreateStudent } from "../validators/user.validator.js";
@@ -32,6 +33,12 @@ router.post(
 router.put(
   "/:id/status",
   asyncHandler(updateStudentStatus)
+);
+
+// RESET STUDENT PASSWORD (admin-only, inherited from router.use above)
+router.put(
+  "/:id/password",
+  asyncHandler(resetStudentPassword)
 );
 
 // DELETE STUDENT

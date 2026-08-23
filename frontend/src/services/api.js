@@ -114,6 +114,15 @@ export const api = {
     await client.delete(`/users/${id}`);
   },
 
+  resetStudentPassword: async (id, newPassword) => {
+    const res = await client.put(
+      `/users/${id}/password`,
+      newPassword ? { newPassword } : {}
+    );
+
+    return res.data;
+  },
+
   // ===============================
   // CHALLENGES
   // ===============================

@@ -91,6 +91,27 @@ export default function AdminStudents() {
     }
   }
 
+  async function resetPassword(student) {
+    const confirmed = window.confirm(
+      `Reset the password for ${student.name || student.username}? A new temporary password will be generated.`
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      const data = await api.resetStudentPassword(student.id);
+
+      setMessage(
+        `Password reset for ${student.username}. Temporary password: "${data.temporaryPassword}" — share this with the student now, it won't be shown again.`
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-display font-bold text-[var(--color-ink)] mb-8">
@@ -235,6 +256,15 @@ export default function AdminStudents() {
                           {student.isActive
                             ? "DISABLE"
                             : "ENABLE"}
+                        </button>
+
+                        {/* RESET PASSWORD */}
+                        <button
+                          type="button"
+                          onClick={() => resetPassword(student)}
+                          className="text-xs border border-[var(--color-line-strong)] px-3 py-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-brass)]"
+                        >
+                          RESET PASSWORD
                         </button>
 
                         {/* DELETE */}

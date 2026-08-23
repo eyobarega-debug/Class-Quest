@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 import {
   createUser,
@@ -8,6 +9,8 @@ import {
   deleteStudent as deleteStudentFromDB,
   formatUser,
   getLeaderboard,
+  findUserById,
+  setPasswordHash,
 } from "../models/user.model.js";
 
 export async function getStudents(req, res) {
@@ -59,6 +62,60 @@ export async function createStudent(req, res) {
 
   res.status(201).json({
     user: formatUser(user),
+  });
+}
+
+// ============================================================
+// ADMIN: RESET A STUDENT'S PASSWORD
+// If no newPassword is given in the body, a random temporary
+// password is generated and returned once in the response so the
+// admin can hand it to the student. It is never logged or stored
+// anywhere in plaintext.
+// ============================================================
+export async function resetStudentPassword(req, res) {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ message: "Invalid student id" });
+  }
+
+  const target = await findUserById(id);
+
+  if (!target) {
+    return res.status(404).json({ message: "Student not found" });
+  }
+
+  // Safety: this endpoint is only for resetting STUDENT accounts.
+  // Prevents it being used (accidentally or otherwise) to overwrite
+  // another admin's password.
+  if (target.role !== "student") {
+    return res.status(403).json({
+      message: "This action can only reset passwords for student accounts.",
+    });
+  }
+
+  let { newPassword } = req.body || {};
+  let generated = false;
+
+  if (!newPassword) {
+    // 8-character random temporary password, e.g. "aZ3kQ9mP"
+    newPassword = crypto.randomBytes(8).toString("base64url").slice(0, 8);
+    generated = true;
+  } else if (typeof newPassword !== "string" || newPassword.length < 6) {
+    return res.status(400).json({
+      message: "Password must be at least 6 characters.",
+    });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const updated = await setPasswordHash(id, passwordHash);
+
+  res.json({
+    message: "Password reset successfully.",
+    user: formatUser(updated),
+    // Only present when auto-generated — this is the ONE time it's
+    // ever visible in plaintext, so show it to the admin right away.
+    temporaryPassword: generated ? newPassword : undefined,
   });
 }
 

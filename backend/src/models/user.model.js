@@ -81,6 +81,23 @@ export async function createUser({
   return result.rows[0];
 }
 
+// ============================================================
+// ADMIN: RESET A USER'S PASSWORD
+// ============================================================
+export async function setPasswordHash(userId, passwordHash) {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET password_hash = $1
+    WHERE id = $2
+    RETURNING ${SELECT_COLUMNS}
+    `,
+    [passwordHash, userId]
+  );
+
+  return result.rows[0] || null;
+}
+
 export async function listStudents({
   limit = 200,
   offset = 0,
