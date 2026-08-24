@@ -445,3 +445,18 @@ export async function hasAcceptedSubmission(userId, challengeId) {
 
   return result.rows.length > 0;
 }
+
+// ============================================================
+// COUNT PRIOR SUBMISSION ATTEMPTS (any status) FOR THIS CHALLENGE
+// ============================================================
+export async function countSubmissionsForUserChallenge(userId, challengeId) {
+  const result = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM submissions
+     WHERE user_id = $1
+       AND challenge_id = $2`,
+    [userId, challengeId]
+  );
+
+  return result.rows[0]?.count || 0;
+}

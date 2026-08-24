@@ -16,6 +16,7 @@ import {
   createChallenge,
   createSubmission,
   hasAcceptedSubmission,
+  countSubmissionsForUserChallenge,
   listSubmissionsForAdmin,
   getSubmissionByIdForAdmin,
 } from "../models/challenge.model.js";
@@ -29,15 +30,17 @@ function slugify(title) {
     .replace(/(^-|-$)/g, "");
 }
 
+// Submission attempt limiting: each WRONG attempt reduces the XP a
+// student can still earn by 20% of the challenge's full reward.
+// After MAX_SUBMIT_ATTEMPTS total attempts (right or wrong) on a
+// challenge they haven't already solved, no more submissions are
+// accepted. "Run" is unaffected — this only gates "Submit".
+const MAX_SUBMIT_ATTEMPTS = 4;
+const XP_PENALTY_PER_ATTEMPT = 0.2;
+
 export async function getChallenges(req, res) {
   const { difficulty, category, language, search } = req.query;
-  const challenges = await listChallenges({
-    difficulty,
-    category,
-    language,
-    search,
-    userId: req.user?.id,
-  });
+  const challenges = await listChallenges({ difficulty, category, language, search });
   res.json({ challenges });
 }
 
@@ -522,6 +525,30 @@ export async function submitCode(req, res) {
       validatedExamAttemptId = attempt.id;
     }
 
+    const alreadySolved = await hasAcceptedSubmission(
+      req.user.id,
+      challenge.id
+    );
+
+    // Once solved, let the student keep practicing without hitting the
+    // attempt cap — there's no more XP to gain, so nothing to protect.
+    let attemptsUsedBefore = 0;
+
+    if (!alreadySolved) {
+      attemptsUsedBefore = await countSubmissionsForUserChallenge(
+        req.user.id,
+        challenge.id
+      );
+
+      if (attemptsUsedBefore >= MAX_SUBMIT_ATTEMPTS) {
+        return res.status(403).json({
+          message: `You've used all ${MAX_SUBMIT_ATTEMPTS} attempts for this challenge.`,
+          attemptsUsed: attemptsUsedBefore,
+          attemptsRemaining: 0,
+        });
+      }
+    }
+
     const allTests = await getAllTestCases(
       challenge.id
     );
@@ -577,21 +604,27 @@ export async function submitCode(req, res) {
 
 
     let xpEarned = 0;
+    let xpScalePercent = 100;
 
     let user = await findUserById(
       req.user.id
     );
 
+    const attemptNumber = attemptsUsedBefore + 1;
+    const attemptsRemaining = Math.max(
+      0,
+      MAX_SUBMIT_ATTEMPTS - attemptNumber
+    );
 
     if (status === "accepted") {
-      const alreadySolved =
-        await hasAcceptedSubmission(
-          req.user.id,
-          challenge.id
+      if (!alreadySolved) {
+        const scale = Math.max(
+          0,
+          1 - XP_PENALTY_PER_ATTEMPT * (attemptNumber - 1)
         );
 
-      if (!alreadySolved) {
-        xpEarned = challenge.xp_reward;
+        xpScalePercent = Math.round(scale * 100);
+        xpEarned = Math.floor(challenge.xp_reward * scale);
 
         user = await addXp(
           req.user.id,
@@ -626,6 +659,11 @@ export async function submitCode(req, res) {
       passedCount,
       totalCount,
       xpEarned,
+      xpScalePercent,
+      alreadySolved,
+      attemptNumber,
+      attemptsRemaining,
+      maxAttempts: MAX_SUBMIT_ATTEMPTS,
 
       results: results.map((r) => ({
         passed: r.passed,

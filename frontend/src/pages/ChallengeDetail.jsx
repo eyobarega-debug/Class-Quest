@@ -59,6 +59,13 @@ export default function ChallengeDetail() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
 
+  const isLockedOut = Boolean(
+    result &&
+      !result.alreadySolved &&
+      result.status !== "accepted" &&
+      result.attemptsRemaining === 0
+  );
+
   const [testSession, setTestSession] = useState(null);
   const [monitorStatus, setMonitorStatus] = useState("checking");
 
@@ -676,11 +683,13 @@ export default function ChallengeDetail() {
 
             <button
               onClick={submitCode}
-              disabled={running}
+              disabled={running || isLockedOut}
               className="px-5 py-2 bg-[var(--color-brass)] text-[#1c1712] font-bold hover:bg-[var(--color-brass-dark)] disabled:opacity-50"
             >
               {running
                 ? "SUBMITTING..."
+                : isLockedOut
+                ? "NO ATTEMPTS LEFT"
                 : "✓ SUBMIT"}
             </button>
           </div>
@@ -740,9 +749,41 @@ export default function ChallengeDetail() {
                 {result.xpEarned > 0 && (
                   <span className="text-sm text-[var(--color-brass-dark)] font-mono">
                     +{result.xpEarned} XP
+                    {result.xpScalePercent < 100 && (
+                      <span className="text-[var(--color-ink-faint)]">
+                        {" "}
+                        ({result.xpScalePercent}% — attempt {result.attemptNumber})
+                      </span>
+                    )}
                   </span>
                 )}
+
+                {!result.alreadySolved &&
+                  result.status !== "accepted" &&
+                  typeof result.attemptsRemaining === "number" && (
+                    <span
+                      className={`text-sm font-mono ${
+                        result.attemptsRemaining === 0
+                          ? "text-[var(--color-red-dark)]"
+                          : "text-[var(--color-ink-muted)]"
+                      }`}
+                    >
+                      {result.attemptsRemaining === 0
+                        ? "No attempts remaining"
+                        : `${result.attemptsRemaining} attempt${
+                            result.attemptsRemaining === 1 ? "" : "s"
+                          } remaining`}
+                    </span>
+                  )}
               </div>
+
+              {result.status !== "accepted" &&
+                result.attemptsRemaining === 0 &&
+                !result.alreadySolved && (
+                  <div className="mb-4 text-sm text-[var(--color-red-dark)] border border-[var(--color-red)]/30 bg-[var(--color-red)]/5 p-3">
+                    You've used all {result.maxAttempts} attempts for this challenge. No further submissions are allowed.
+                  </div>
+                )}
 
               {/* TEST CASES */}
 
