@@ -114,7 +114,7 @@ export default function AdminStudents() {
 
   async function resetXp(student) {
     const confirmed = window.confirm(
-      `Reset ${student.name || student.username}'s XP to 0? This can't be undone. Their submission history stays intact — only the XP total is cleared.`
+      `Reset ${student.name || student.username}'s season XP to 0? This starts them fresh for a new week/challenge. Their All-Time XP and submission history are unaffected.`
     );
 
     if (!confirmed) return;

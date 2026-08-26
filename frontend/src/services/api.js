@@ -481,8 +481,10 @@ export const api = {
     );
   },
 
-    leaderboard: async () => {
-    const res = await client.get("/users/leaderboard");
+    leaderboard: async (board = "current") => {
+    const res = await client.get("/users/leaderboard", {
+      params: board === "lifetime" ? { board: "lifetime" } : undefined,
+    });
     return res.data.leaderboard;
   },
 

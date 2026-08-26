@@ -3,7 +3,7 @@ import { getXpProgress } from "../utils/levelSystem.js";
 
 const SELECT_COLUMNS = `
   id, username, email, full_name, role, avatar_url,
-  xp, rating, streak, is_active, created_at
+  xp, lifetime_xp, rating, streak, is_active, created_at
 `;
 
 export function formatUser(user) {
@@ -19,6 +19,7 @@ export function formatUser(user) {
     role: user.role,
     avatarUrl: user.avatar_url,
     xp: user.xp || 0,
+    lifetimeXp: user.lifetime_xp || 0,
     level: progress.level,
     xpIntoLevel: progress.xpIntoLevel,
     xpForNextLevel: progress.xpForNextLevel,
@@ -131,18 +132,23 @@ export async function setActive(id, isActive) {
 // Ranked by XP (ties broken by rating). Solved count is distinct
 // challenges with at least one accepted submission. Used by the
 // Coding Arena leaderboard.
-export async function getLeaderboard(limit = 50) {
+// orderBy: "xp" (default) ranks by the CURRENT/resettable total — this
+// is the weekly/competition leaderboard. "lifetime_xp" ranks by the
+// permanent running total that survives every reset.
+export async function getLeaderboard(limit = 50, orderBy = "xp") {
+  const column = orderBy === "lifetime_xp" ? "lifetime_xp" : "xp";
+
   const result = await pool.query(
     `
     SELECT
       u.id, u.username, u.full_name, u.avatar_url,
-      u.xp, u.rating, u.streak,
+      u.xp, u.lifetime_xp, u.rating, u.streak,
       COUNT(DISTINCT s.challenge_id) FILTER (WHERE s.status = 'accepted') AS solved_count
     FROM users u
     LEFT JOIN submissions s ON s.user_id = u.id
     WHERE u.role = 'student' AND u.is_active = true
     GROUP BY u.id
-    ORDER BY u.xp DESC, u.rating DESC, u.username ASC
+    ORDER BY u.${column} DESC, u.rating DESC, u.username ASC
     LIMIT $1
     `,
     [limit]
@@ -167,7 +173,9 @@ export async function deleteStudent(id) {
 export async function addXp(userId, amount) {
   const result = await pool.query(
     `UPDATE users
-     SET xp = xp + $2, updated_at = NOW()
+     SET xp = xp + $2,
+         lifetime_xp = lifetime_xp + $2,
+         updated_at = NOW()
      WHERE id = $1
      RETURNING ${SELECT_COLUMNS}`,
     [userId, amount]
@@ -177,10 +185,11 @@ export async function addXp(userId, amount) {
 }
 
 // ============================================================
-// ADMIN: RESET A STUDENT'S XP TO 0
-// Only zeroes the xp column — leaves submission/answer history
-// untouched, so past coding submissions and exam answers still exist,
-// they just no longer count toward their XP total.
+// ADMIN: RESET A STUDENT'S CURRENT XP TO 0 (e.g. starting a new
+// week/competition). Only zeroes "xp" — the column used for the
+// live/current leaderboard and level display. "lifetime_xp" is
+// intentionally left untouched, so it keeps accumulating across
+// every reset and powers a separate All-Time leaderboard.
 // ============================================================
 export async function resetXp(userId) {
   const result = await pool.query(

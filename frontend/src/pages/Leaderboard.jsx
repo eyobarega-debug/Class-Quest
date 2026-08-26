@@ -7,17 +7,19 @@ import { api } from "../services/api";
 export default function Leaderboard() {
   const { user } = useAuth();
 
+  const [board, setBoard] = useState("current"); // "current" | "lifetime"
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setLoading(true);
     api
-      .leaderboard()
+      .leaderboard(board)
       .then(setLeaderboard)
       .catch((err) => setError(err.message || "Failed to load leaderboard."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [board]);
 
   return (
     <div>
@@ -26,12 +28,41 @@ export default function Leaderboard() {
           TOP EXPLORERS
         </p>
 
-        <h1 className="text-3xl font-display font-bold text-[var(--color-ink)]">
-          Leaderboard
-        </h1>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-3xl font-display font-bold text-[var(--color-ink)]">
+            Leaderboard
+          </h1>
+
+          <div className="flex border border-[var(--color-line-strong)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setBoard("current")}
+              className={`text-xs font-mono px-4 py-2 transition-colors ${
+                board === "current"
+                  ? "bg-[var(--color-brass)] text-[#1c1712] font-bold"
+                  : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              THIS SEASON
+            </button>
+            <button
+              type="button"
+              onClick={() => setBoard("lifetime")}
+              className={`text-xs font-mono px-4 py-2 transition-colors ${
+                board === "lifetime"
+                  ? "bg-[var(--color-brass)] text-[#1c1712] font-bold"
+                  : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              ALL-TIME
+            </button>
+          </div>
+        </div>
 
         <p className="text-[var(--color-ink-muted)] mt-2">
-          Ranked by XP earned across the Coding Arena.
+          {board === "current"
+            ? "Ranked by XP earned this season — resets when an admin starts a new challenge."
+            : "Ranked by total XP ever earned — never resets."}
         </p>
       </div>
 
@@ -54,9 +85,9 @@ export default function Leaderboard() {
           {/* TOP 3 PODIUM */}
           {leaderboard.length >= 3 && (
             <div className="grid grid-cols-3 gap-4 mb-6 items-end">
-              <PodiumCard entry={leaderboard[1]} place={2} isYou={leaderboard[1]?.id === user?.id} />
-              <PodiumCard entry={leaderboard[0]} place={1} isYou={leaderboard[0]?.id === user?.id} />
-              <PodiumCard entry={leaderboard[2]} place={3} isYou={leaderboard[2]?.id === user?.id} />
+              <PodiumCard entry={leaderboard[1]} place={2} isYou={leaderboard[1]?.id === user?.id} board={board} />
+              <PodiumCard entry={leaderboard[0]} place={1} isYou={leaderboard[0]?.id === user?.id} board={board} />
+              <PodiumCard entry={leaderboard[2]} place={3} isYou={leaderboard[2]?.id === user?.id} board={board} />
             </div>
           )}
 
@@ -124,7 +155,7 @@ export default function Leaderboard() {
 
                   <div className="flex items-center gap-1 text-[var(--color-brass-dark)] font-display font-bold w-24 justify-end">
                     <Trophy size={16} />
-                    {entry.xp} XP
+                    {board === "lifetime" ? entry.lifetimeXp : entry.xp} XP
                   </div>
                 </div>
               );
@@ -136,7 +167,7 @@ export default function Leaderboard() {
   );
 }
 
-function PodiumCard({ entry, place, isYou }) {
+function PodiumCard({ entry, place, isYou, board }) {
   if (!entry) return <div />;
 
   const heights = { 1: "py-8", 2: "py-5", 3: "py-5" };
@@ -146,6 +177,8 @@ function PodiumCard({ entry, place, isYou }) {
       : place === 2
       ? "text-[var(--color-ink-muted)]"
       : "text-[var(--color-ink-faint)]";
+
+  const displayXp = board === "lifetime" ? entry.lifetimeXp : entry.xp;
 
   return (
     <div
@@ -172,7 +205,7 @@ function PodiumCard({ entry, place, isYou }) {
       </div>
 
       <div className="text-[var(--color-brass-dark)] font-display font-bold mt-1">
-        {entry.xp} XP
+        {displayXp} XP
       </div>
 
       <div className={`text-xs font-mono mt-2 ${crownColor}`}>#{place}</div>

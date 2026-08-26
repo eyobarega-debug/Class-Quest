@@ -23,9 +23,12 @@ export async function getStudents(req, res) {
 }
 
 export async function getLeaderboardHandler(req, res) {
-  const rows = await getLeaderboard(50);
+  const orderBy = req.query.board === "lifetime" ? "lifetime_xp" : "xp";
+
+  const rows = await getLeaderboard(50, orderBy);
 
   res.json({
+    board: orderBy === "lifetime_xp" ? "lifetime" : "current",
     leaderboard: rows.map((u, i) => ({
       rank: i + 1,
       id: u.id,
@@ -33,6 +36,7 @@ export async function getLeaderboardHandler(req, res) {
       name: u.full_name,
       avatarUrl: u.avatar_url,
       xp: u.xp || 0,
+      lifetimeXp: u.lifetime_xp || 0,
       rating: u.rating,
       streak: u.streak,
       solved: Number(u.solved_count) || 0,
