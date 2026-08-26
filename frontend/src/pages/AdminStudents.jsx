@@ -112,6 +112,27 @@ export default function AdminStudents() {
     }
   }
 
+  async function resetXp(student) {
+    const confirmed = window.confirm(
+      `Reset ${student.name || student.username}'s XP to 0? This can't be undone. Their submission history stays intact — only the XP total is cleared.`
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      await api.resetStudentXp(student.id);
+
+      setMessage(`${student.username}'s XP has been reset to 0.`);
+
+      loadStudents();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div>
       <h1 className="text-3xl font-display font-bold text-[var(--color-ink)] mb-8">
@@ -265,6 +286,15 @@ export default function AdminStudents() {
                           className="text-xs border border-[var(--color-line-strong)] px-3 py-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-brass)]"
                         >
                           RESET PASSWORD
+                        </button>
+
+                        {/* RESET XP */}
+                        <button
+                          type="button"
+                          onClick={() => resetXp(student)}
+                          className="text-xs border border-[var(--color-line-strong)] px-3 py-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-brass)]"
+                        >
+                          RESET XP
                         </button>
 
                         {/* DELETE */}

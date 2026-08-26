@@ -123,6 +123,11 @@ export const api = {
     return res.data;
   },
 
+  resetStudentXp: async (id) => {
+    const res = await client.put(`/users/${id}/xp/reset`);
+    return res.data;
+  },
+
   // ===============================
   // CHALLENGES
   // ===============================

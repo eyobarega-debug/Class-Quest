@@ -11,6 +11,7 @@ import {
   getLeaderboard,
   findUserById,
   setPasswordHash,
+  resetXp,
 } from "../models/user.model.js";
 
 export async function getStudents(req, res) {
@@ -116,6 +117,39 @@ export async function resetStudentPassword(req, res) {
     // Only present when auto-generated — this is the ONE time it's
     // ever visible in plaintext, so show it to the admin right away.
     temporaryPassword: generated ? newPassword : undefined,
+  });
+}
+
+// ============================================================
+// ADMIN: RESET A STUDENT'S XP (e.g. before a new challenge/competition)
+// Only zeroes their XP total — submission history is untouched.
+// ============================================================
+export async function resetStudentXp(req, res) {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ message: "Invalid student id" });
+  }
+
+  const target = await findUserById(id);
+
+  if (!target) {
+    return res.status(404).json({ message: "Student not found" });
+  }
+
+  // Same safety rule as password reset: this can only zero a STUDENT's
+  // XP, never an admin's, to avoid any accidental/malicious misuse.
+  if (target.role !== "student") {
+    return res.status(403).json({
+      message: "This action can only reset XP for student accounts.",
+    });
+  }
+
+  const updated = await resetXp(id);
+
+  res.json({
+    message: "XP reset to 0.",
+    user: formatUser(updated),
   });
 }
 

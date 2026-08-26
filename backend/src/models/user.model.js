@@ -175,3 +175,21 @@ export async function addXp(userId, amount) {
 
   return result.rows[0] || null;
 }
+
+// ============================================================
+// ADMIN: RESET A STUDENT'S XP TO 0
+// Only zeroes the xp column — leaves submission/answer history
+// untouched, so past coding submissions and exam answers still exist,
+// they just no longer count toward their XP total.
+// ============================================================
+export async function resetXp(userId) {
+  const result = await pool.query(
+    `UPDATE users
+     SET xp = 0, updated_at = NOW()
+     WHERE id = $1
+     RETURNING ${SELECT_COLUMNS}`,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
