@@ -545,6 +545,44 @@ export default function AdminExams() {
               IMPORT ALL
             </button>
           </form>
+          {/* Upload a .json file instead of pasting */}
+<div>
+  <label className="block text-xs text-gray-500 font-mono mb-2">
+    UPLOAD JSON FILE
+  </label>
+  <input
+    type="file"
+    accept=".json,application/json"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        setError("Please select a .json file.");
+        e.target.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        try {
+          JSON.parse(text); // validate before loading it in
+          setBulkJson(text);
+          setError("");
+          setMessage("File loaded — review below, then click IMPORT ALL.");
+        } catch {
+          setError("That file isn't valid JSON. Check for a missing comma or bracket.");
+        }
+      };
+      reader.onerror = () => setError("Failed to read the file.");
+      reader.readAsText(file);
+
+      e.target.value = ""; // allow re-selecting the same file later
+    }}
+    className="input"
+  />
+</div>
 
           {/* Existing questions */}
           <div className="space-y-2">
