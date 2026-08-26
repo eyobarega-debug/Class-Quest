@@ -242,6 +242,24 @@ export default function AdminExams() {
     }
   }
 
+  async function gradeAnswer(attemptId, questionId, isCorrect) {
+    setError("");
+    setMessage("");
+
+    try {
+      await api.gradeShortAnswer(attemptId, questionId, isCorrect);
+
+      // Refresh both the detail panel (so the change is visible right
+      // away) and the attempts list (so the updated score shows there too).
+      setAttemptDetail(await api.examAttemptDetail(attemptId));
+      setAttempts(await api.examAttempts(selectedExamId));
+
+      setMessage("Grade updated.");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   const selectedExam = exams.find((e) => e.id === selectedExamId);
 
   return (
@@ -389,7 +407,7 @@ export default function AdminExams() {
           </div>
 
           {tab === "attempts" ? (
-            <ExamAttemptsPanel attempts={attempts} attemptDetail={attemptDetail} onOpenAttempt={openAttempt} />
+            <ExamAttemptsPanel attempts={attempts} attemptDetail={attemptDetail} onOpenAttempt={openAttempt} onGradeAnswer={gradeAnswer} />
           ) : (
           <>
           {/* Change password */}
@@ -556,7 +574,7 @@ export default function AdminExams() {
 // with score "out of" the exam's total points (not XP), and a click-
 // through detail panel showing exactly what the student answered for
 // every question (including their coding source code).
-function ExamAttemptsPanel({ attempts, attemptDetail, onOpenAttempt }) {
+function ExamAttemptsPanel({ attempts, attemptDetail, onOpenAttempt, onGradeAnswer }) {
   return (
     <div className="grid xl:grid-cols-2 gap-6">
       <div className="border border-[var(--color-line)] overflow-x-auto h-fit">
@@ -644,15 +662,47 @@ function ExamAttemptsPanel({ attempts, attemptDetail, onOpenAttempt }) {
                       )}
                     </>
                   ) : (
-                    <p className={`text-xs font-mono ${q.isCorrect ? "text-[var(--color-teal-dark)]" : "text-[var(--color-red-dark)]"}`}>
-                      Student answered: {q.studentAnswer ?? "(no answer)"}
-                      {q.isCorrect === false && (
-                        <span className="text-[var(--color-ink-muted)]">
-                          {" "}
-                          — correct: {JSON.stringify(q.correctAnswer)}
-                        </span>
+                    <div>
+                      <p className={`text-xs font-mono ${q.isCorrect ? "text-[var(--color-teal-dark)]" : "text-[var(--color-red-dark)]"}`}>
+                        Student answered: {q.studentAnswer ?? "(no answer)"}
+                        {q.isCorrect === false && (
+                          <span className="text-[var(--color-ink-muted)]">
+                            {" "}
+                            — correct: {JSON.stringify(q.correctAnswer)}
+                          </span>
+                        )}
+                      </p>
+
+                      {q.type === "short_answer" && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] text-[var(--color-ink-faint)] font-mono uppercase mr-1">
+                            Override:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onGradeAnswer(attemptDetail.attempt.id, q.questionId, true)}
+                            className={`text-[10px] font-mono px-2 py-1 border ${
+                              q.isCorrect
+                                ? "bg-[var(--color-teal)]/15 border-[var(--color-teal)]/40 text-[var(--color-teal-dark)]"
+                                : "border-[var(--color-line-strong)] text-[var(--color-ink-muted)] hover:border-[var(--color-teal)]/50 hover:text-[var(--color-teal-dark)]"
+                            }`}
+                          >
+                            ✓ MARK CORRECT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onGradeAnswer(attemptDetail.attempt.id, q.questionId, false)}
+                            className={`text-[10px] font-mono px-2 py-1 border ${
+                              q.isCorrect === false
+                                ? "bg-[var(--color-red)]/15 border-[var(--color-red)]/40 text-[var(--color-red-dark)]"
+                                : "border-[var(--color-line-strong)] text-[var(--color-ink-muted)] hover:border-[var(--color-red)]/50 hover:text-[var(--color-red-dark)]"
+                            }`}
+                          >
+                            ✕ MARK WRONG
+                          </button>
+                        </div>
                       )}
-                    </p>
+                    </div>
                   )}
                 </div>
               ))}

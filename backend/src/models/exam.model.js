@@ -450,6 +450,40 @@ export async function getAttemptAnswers(examAttemptId) {
 }
 
 // ---------------------------------------------------------------------
+// Admin: manually override the auto-grade on one answer (used for
+// short_answer questions where exact-string matching is too strict —
+// e.g. the student wrote it correctly but phrased differently). Only
+// touches an answer that already exists; does not create one.
+// ---------------------------------------------------------------------
+export async function updateExamAnswerGrade(examAttemptId, examQuestionId, { isCorrect, pointsAwarded }) {
+  const result = await pool.query(
+    `UPDATE exam_answers
+     SET is_correct = $1,
+         points_awarded = $2
+     WHERE exam_attempt_id = $3 AND exam_question_id = $4
+     RETURNING *`,
+    [isCorrect, pointsAwarded, examAttemptId, examQuestionId]
+  );
+  return result.rows[0] || null;
+}
+
+// Recompute and store total_score/max_score on an attempt WITHOUT
+// touching status or submitted_at — used after an admin overrides a
+// grade post-submission, so the score updates but the original
+// submission timestamp is preserved.
+export async function updateAttemptScore(attemptId, totalScore, maxScore) {
+  const result = await pool.query(
+    `UPDATE exam_attempts
+     SET total_score = $1,
+         max_score = $2
+     WHERE id = $3
+     RETURNING *`,
+    [totalScore, maxScore, attemptId]
+  );
+  return result.rows[0] || null;
+}
+
+// ---------------------------------------------------------------------
 // Admin: see what students have done on an exam
 // ---------------------------------------------------------------------
 

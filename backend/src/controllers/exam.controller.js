@@ -27,6 +27,8 @@ import {
   getAttemptDetailForAdmin,
   listExamAnswersForAdmin,
   getAttemptStatusesForUser,
+  updateExamAnswerGrade,
+  updateAttemptScore,
 } from "../models/exam.model.js";
 import { getChallengeById } from "../models/challenge.model.js";
 
@@ -543,24 +545,13 @@ function gradeAnswer(question, rawAnswer) {
 // coding submissions, and returns a final score. Rejected if the
 // attempt already ended, or accepted-but-marked-expired if time was
 // already up server-side — either way nothing further can be answered.
-export async function finishExam(req, res) {
-  const attemptId = Number(req.params.attemptId);
-  const attempt = await getAttemptById(attemptId);
-
-  if (!attempt || attempt.user_id !== req.user.id) {
-    return res.status(404).json({ message: "Attempt not found" });
-  }
-
-  const exam = await getExamById(attempt.exam_id);
-  let current = await enforceExpiry(attempt, exam);
-
-  if (current.status === "submitted") {
-    return res.status(409).json({ message: "This exam has already been submitted." });
-  }
-
-  const questions = await getExamQuestionsForAdmin(exam.id); // includes points + type, admin-only fields unused here
-  const answers = await getAttemptAnswers(attempt.id);
-  const codingScores = await getAttemptCodingScore(attempt.id);
+// Shared scoring logic used both when a student finishes an exam and
+// when an admin later overrides a short-answer grade. Keeping this in
+// one place means both paths always compute the score the same way.
+async function computeAttemptScore(examId, attemptId) {
+  const questions = await getExamQuestionsForAdmin(examId);
+  const answers = await getAttemptAnswers(attemptId);
+  const codingScores = await getAttemptCodingScore(attemptId);
 
   let totalScore = 0;
   let maxScore = 0;
@@ -577,6 +568,26 @@ export async function finishExam(req, res) {
     }
   }
 
+  return { totalScore, maxScore };
+}
+
+export async function finishExam(req, res) {
+  const attemptId = Number(req.params.attemptId);
+  const attempt = await getAttemptById(attemptId);
+
+  if (!attempt || attempt.user_id !== req.user.id) {
+    return res.status(404).json({ message: "Attempt not found" });
+  }
+
+  const exam = await getExamById(attempt.exam_id);
+  let current = await enforceExpiry(attempt, exam);
+
+  if (current.status === "submitted") {
+    return res.status(409).json({ message: "This exam has already been submitted." });
+  }
+
+  const { totalScore, maxScore } = await computeAttemptScore(exam.id, attempt.id);
+
   const finalStatus = current.status === "expired" ? "expired" : "submitted";
   current = await markAttemptStatus(attempt.id, finalStatus, { totalScore, maxScore });
 
@@ -590,6 +601,82 @@ export async function finishExam(req, res) {
     submittedAt: current.submitted_at,
   },
 });
+}
+
+// -----------------------------------------------------------------------
+// ADMIN: MANUALLY OVERRIDE A SHORT-ANSWER GRADE
+//
+// Exact-string matching is often too strict for free-text answers — a
+// student may write something correct that just isn't phrased exactly
+// like the stored answer. This lets an admin mark one student's
+// short-answer response right/wrong by hand, and immediately
+// recomputes + stores the attempt's total score to match.
+// -----------------------------------------------------------------------
+export async function regradeShortAnswer(req, res) {
+  const attemptId = Number(req.params.attemptId);
+  const questionId = Number(req.params.questionId);
+  const { isCorrect } = req.body || {};
+
+  if (!Number.isInteger(attemptId) || !Number.isInteger(questionId)) {
+    return res.status(400).json({ message: "Invalid attempt or question id." });
+  }
+
+  if (typeof isCorrect !== "boolean") {
+    return res.status(400).json({ message: "isCorrect (true or false) is required." });
+  }
+
+  const attempt = await getAttemptById(attemptId);
+
+  if (!attempt) {
+    return res.status(404).json({ message: "Attempt not found." });
+  }
+
+  if (attempt.status === "in_progress") {
+    return res.status(400).json({
+      message: "Can't grade an exam the student hasn't submitted yet.",
+    });
+  }
+
+  const question = await getExamQuestionById(questionId);
+
+  if (!question || question.exam_id !== attempt.exam_id) {
+    return res.status(404).json({ message: "Question not found on this exam." });
+  }
+
+  if (question.type !== "short_answer") {
+    return res.status(400).json({
+      message: "Manual grading is only available for short-answer questions.",
+    });
+  }
+
+  const pointsAwarded = isCorrect ? question.points : 0;
+
+  const updatedAnswer = await updateExamAnswerGrade(attemptId, questionId, {
+    isCorrect,
+    pointsAwarded,
+  });
+
+  if (!updatedAnswer) {
+    return res.status(404).json({ message: "The student didn't answer this question." });
+  }
+
+  const { totalScore, maxScore } = await computeAttemptScore(
+    attempt.exam_id,
+    attemptId
+  );
+
+  const updatedAttempt = await updateAttemptScore(attemptId, totalScore, maxScore);
+
+  res.json({
+    message: "Grade updated.",
+    answer: {
+      questionId,
+      isCorrect: updatedAnswer.is_correct,
+      pointsAwarded: updatedAnswer.points_awarded,
+    },
+    totalScore: updatedAttempt.total_score,
+    maxScore: updatedAttempt.max_score,
+  });
 }
 
 // -----------------------------------------------------------------------

@@ -19,6 +19,7 @@ import {
   getExamAttemptDetailForAdmin,
   getAllExamAnswers,
   approveResult,
+  regradeShortAnswer,
 } from "../controllers/exam.controller.js";
 import {
   validateCreateExam,
@@ -65,6 +66,15 @@ router.delete("/:id/questions/:questionId", authenticate, requireAdmin, asyncHan
 // --- Admin: see what students have done on an exam ---
 router.get("/:id/attempts", authenticate, requireAdmin, asyncHandler(getExamAttemptsForAdmin));
 router.get("/attempts/:attemptId/admin", authenticate, requireAdmin, asyncHandler(getExamAttemptDetailForAdmin));
+
+// Manually override a short-answer grade (auto exact-match is often
+// too strict for free-text answers).
+router.patch(
+  "/attempts/:attemptId/questions/:questionId/grade",
+  authenticate,
+  requireAdmin,
+  asyncHandler(regradeShortAnswer)
+);
 
 // --- Student: password gate, then start/take/finish ---
 router.post("/:id/verify-password", authenticate, asyncHandler(verifyExamPassword));

@@ -579,6 +579,15 @@ export const api = {
     return res.data;
   },
 
+  gradeShortAnswer: async (attemptId, questionId, isCorrect) => {
+    const res = await client.patch(
+      `/exams/attempts/${attemptId}/questions/${questionId}/grade`,
+      { isCorrect }
+    );
+
+    return res.data;
+  },
+
   // ===============================
   // ADMIN EXAM ANSWERS
   // ===============================
