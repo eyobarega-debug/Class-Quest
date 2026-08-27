@@ -76,7 +76,7 @@ export default function AdminDashboard() {
     // ------------------------------------------
 
     try {
-      const challenges = await api.challenges();
+      const challenges = await api.challenges({ week: "all" });
 
       setChallengeCount(
         Array.isArray(challenges)

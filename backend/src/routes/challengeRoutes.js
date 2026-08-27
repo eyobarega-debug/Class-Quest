@@ -10,6 +10,8 @@ import {
   submitCode,
   getAllSubmissions,
   getSubmissionDetail,
+  getActiveWeekHandler,
+  setActiveWeekHandler,
 } from "../controllers/challenge.controller.js";
 import { validateCreateChallenge, validateSubmission } from "../validators/challenge.validator.js";
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -23,6 +25,11 @@ const router = express.Router();
 // "submissions" is never matched as a challenge slug. ---
 router.get("/submissions", authenticate, requireAdmin, asyncHandler(getAllSubmissions));
 router.get("/submissions/:id", authenticate, requireAdmin, asyncHandler(getSubmissionDetail));
+
+// --- Active week (which week's challenges students see by default).
+// Also registered before "/:slug" for the same reason as above. ---
+router.get("/active-week", authenticate, asyncHandler(getActiveWeekHandler));
+router.patch("/active-week", authenticate, requireAdmin, asyncHandler(setActiveWeekHandler));
 
 router.get("/", authenticate, asyncHandler(getChallenges));
 router.get("/:slug", authenticate, asyncHandler(getChallengeDetail));

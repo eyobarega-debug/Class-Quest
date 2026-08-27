@@ -21,6 +21,7 @@ import {
   getSubmissionByIdForAdmin,
 } from "../models/challenge.model.js";
 import { addXp, findUserById, formatUser } from "../models/user.model.js";
+import { getActiveWeek, setActiveWeek } from "../models/settings.model.js";
 
 function slugify(title) {
   return title
@@ -39,9 +40,43 @@ const MAX_SUBMIT_ATTEMPTS = 4;
 const XP_PENALTY_PER_ATTEMPT = 0.2;
 
 export async function getChallenges(req, res) {
-  const { difficulty, category, language, search } = req.query;
-  const challenges = await listChallenges({ difficulty, category, language, search });
-  res.json({ challenges });
+  const { difficulty, category, language, search, week } = req.query;
+
+  // Default to whichever week is currently active, so students only
+  // see this week's challenges (plus any evergreen, unweighted ones).
+  // Pass ?week=all to see everything regardless of week (used by the
+  // admin's Manage Challenges page).
+  const effectiveWeek =
+    week !== undefined ? (week === "all" ? "all" : Number(week)) : await getActiveWeek();
+
+  const challenges = await listChallenges({
+    difficulty,
+    category,
+    language,
+    search,
+    week: effectiveWeek,
+  });
+
+  res.json({ challenges, activeWeek: await getActiveWeek() });
+}
+
+// ============================================================
+// ADMIN: GET / SET THE ACTIVE WEEK
+// ============================================================
+export async function getActiveWeekHandler(req, res) {
+  res.json({ activeWeek: await getActiveWeek() });
+}
+
+export async function setActiveWeekHandler(req, res) {
+  const { week } = req.body || {};
+  const parsed = Number(week);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return res.status(400).json({ message: "week must be a positive integer." });
+  }
+
+  const activeWeek = await setActiveWeek(parsed);
+  res.json({ activeWeek });
 }
 
 // ADMIN: list every student's coding submissions, with the exact
@@ -117,7 +152,7 @@ export async function postChallenge(req, res) {
   const {
     title, description, difficulty, category, tags,
     xpReward, timeLimitMs, memoryLimitMb, constraints,
-    languages, testCases, isPublished,
+    week, languages, testCases, isPublished,
   } = req.body;
 
   const basePayload = {
@@ -130,6 +165,7 @@ export async function postChallenge(req, res) {
     timeLimitMs: timeLimitMs || 2000,
     memoryLimitMb: memoryLimitMb || 128,
     constraints,
+    week: week === undefined || week === null || week === "" ? null : Number(week),
     languages,
     testCases: testCases || [],
     createdBy: req.user.id,

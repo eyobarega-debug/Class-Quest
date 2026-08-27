@@ -151,11 +151,25 @@ export const api = {
       params.category = filters.category;
     }
 
+    if (filters.week !== undefined) {
+      params.week = filters.week; // number, or "all"
+    }
+
     const res = await client.get("/challenges", {
       params,
     });
 
     return res.data.challenges;
+  },
+
+  getActiveWeek: async () => {
+    const res = await client.get("/challenges/active-week");
+    return res.data.activeWeek;
+  },
+
+  setActiveWeek: async (week) => {
+    const res = await client.patch("/challenges/active-week", { week });
+    return res.data.activeWeek;
   },
 
   challenge: async (slug) => {

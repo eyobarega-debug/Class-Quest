@@ -1,7 +1,7 @@
 import pool from "../config/db.js";
 
 const CHALLENGE_LIST_COLUMNS = `
-  id, title, slug, difficulty, category, tags, xp_reward, is_published, created_at
+  id, title, slug, difficulty, category, tags, xp_reward, week, is_published, created_at
 `;
 
 // ============================================================
@@ -18,6 +18,7 @@ export async function createChallenge({
   timeLimitMs = 2000,
   memoryLimitMb = 128,
   constraints,
+  week = null,
   languages = [],
   testCases = [],
   createdBy,
@@ -41,10 +42,11 @@ export async function createChallenge({
           time_limit_ms,
           memory_limit_mb,
           constraints,
+          week,
           created_by,
           is_published
         )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
       [
         title,
@@ -57,6 +59,7 @@ export async function createChallenge({
         timeLimitMs,
         memoryLimitMb,
         constraints,
+        week,
         createdBy,
         isPublished,
       ]
@@ -121,6 +124,7 @@ export async function listChallenges({
   category,
   language,
   search,
+  week,
   limit = 50,
   offset = 0,
 } = {}) {
@@ -140,6 +144,15 @@ export async function listChallenges({
   if (search) {
     params.push(`%${search}%`);
     conditions.push(`title ILIKE $${params.length}`);
+  }
+
+  // week === "all" bypasses week filtering entirely (used by admins to
+  // see every challenge). Otherwise, show challenges tagged with the
+  // given week PLUS evergreen challenges (week IS NULL) that are
+  // always visible regardless of which week is active.
+  if (week !== undefined && week !== null && week !== "all") {
+    params.push(week);
+    conditions.push(`(week = $${params.length} OR week IS NULL)`);
   }
 
   let languageCondition = "";
@@ -257,6 +270,7 @@ const UPDATE_FIELD_MAP = {
   tags: "tags",
   xpReward: "xp_reward",
   constraints: "constraints",
+  week: "week",
   isPublished: "is_published",
 };
 

@@ -27,6 +27,7 @@ export default function AdminChallenges() {
     difficulty: "easy",
     category: "",
     xpReward: 100,
+    week: "",
     language: "javascript",
     starterCode: starterCodes.javascript,
   });
@@ -37,13 +38,48 @@ export default function AdminChallenges() {
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
 
+  // Active week control
+  const [activeWeek, setActiveWeekState] = useState(null);
+  const [weekInput, setWeekInput] = useState("");
+  const [savingWeek, setSavingWeek] = useState(false);
+
   useEffect(() => {
     loadChallenges();
+    api
+      .getActiveWeek()
+      .then((w) => {
+        setActiveWeekState(w);
+        setWeekInput(String(w));
+      })
+      .catch(() => {});
   }, []);
+
+  async function saveActiveWeek() {
+    const week = Number(weekInput);
+
+    if (!Number.isInteger(week) || week < 1) {
+      setError("Active week must be a positive whole number.");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setSavingWeek(true);
+
+    try {
+      const updated = await api.setActiveWeek(week);
+      setActiveWeekState(updated);
+      setMessage(`Active week set to Week ${updated}. Students now see Week ${updated}'s challenges by default.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingWeek(false);
+    }
+  }
 
   async function loadChallenges() {
     try {
-      const data = await api.challenges();
+      const data = await api.challenges({ week: "all" });
       setChallenges(data);
     } catch (err) {
       setError(err.message);
@@ -76,6 +112,7 @@ export default function AdminChallenges() {
         difficulty: form.difficulty,
         category: form.category,
         xpReward: Number(form.xpReward) || 100,
+        week: form.week === "" ? null : Number(form.week),
         languages: [
           {
             language: form.language,
@@ -106,6 +143,7 @@ export default function AdminChallenges() {
       difficulty: "easy",
       category: "",
       xpReward: 100,
+      week: "",
       language: "javascript",
       starterCode: starterCodes.javascript,
     });
@@ -238,6 +276,7 @@ export default function AdminChallenges() {
             difficulty: item.difficulty || "easy",
             category: item.category || "",
             xpReward: Number(item.xpReward) || 100,
+            week: item.week === undefined || item.week === null || item.week === "" ? null : Number(item.week),
             languages,
             testCases: testCasesPayload,
           });
@@ -280,6 +319,46 @@ export default function AdminChallenges() {
         </Link>{" "}
         page, where you can also mix them with coding questions in one exam.
       </p>
+
+      <div className="ledger-card p-6 mb-6">
+        <h2 className="text-[var(--color-ink)] font-bold mb-2">ACTIVE WEEK</h2>
+
+        <p className="text-sm text-[var(--color-ink-muted)] mb-4">
+          Students see this week's challenges (plus any with no week set) by default on the
+          Coding Arena. Change this when starting a new week's competition — pair it with
+          resetting students' season XP on the{" "}
+          <Link to="/admin/students" className="text-[var(--color-brass-dark)] underline">
+            Students
+          </Link>{" "}
+          page for a clean start.
+        </p>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[var(--color-ink-muted)] font-mono">
+            Currently active:{" "}
+            <span className="text-[var(--color-brass-dark)] font-bold">
+              {activeWeek === null ? "..." : `Week ${activeWeek}`}
+            </span>
+          </span>
+
+          <input
+            type="number"
+            min="1"
+            value={weekInput}
+            onChange={(e) => setWeekInput(e.target.value)}
+            className="input w-24"
+          />
+
+          <button
+            type="button"
+            onClick={saveActiveWeek}
+            disabled={savingWeek || Number(weekInput) === activeWeek}
+            className="px-4 py-2 bg-[var(--color-brass)] text-[#1c1712] font-bold hover:bg-[var(--color-brass-dark)] disabled:opacity-50"
+          >
+            {savingWeek ? "SAVING..." : "SET ACTIVE WEEK"}
+          </button>
+        </div>
+      </div>
 
       <div className="ledger-card p-6 mb-6">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
@@ -359,7 +438,7 @@ export default function AdminChallenges() {
             required
           />
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <select
               value={form.difficulty}
               onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
@@ -382,6 +461,15 @@ export default function AdminChallenges() {
               placeholder="XP reward"
               value={form.xpReward}
               onChange={(e) => setForm({ ...form, xpReward: e.target.value })}
+              className="input"
+            />
+
+            <input
+              type="number"
+              min="1"
+              placeholder="Week (blank = always visible)"
+              value={form.week}
+              onChange={(e) => setForm({ ...form, week: e.target.value })}
               className="input"
             />
           </div>
@@ -469,6 +557,7 @@ export default function AdminChallenges() {
               <tr className="text-left text-[var(--color-ink-muted)] font-mono text-xs">
                 <th className="p-4">TITLE</th>
                 <th className="p-4">DIFF</th>
+                <th className="p-4">WEEK</th>
                 <th className="p-4"></th>
               </tr>
             </thead>
@@ -478,6 +567,21 @@ export default function AdminChallenges() {
                   <td className="p-4 text-[var(--color-ink)]">{c.title}</td>
                   <td className="p-4 text-[var(--color-ink-muted)]">{c.difficulty}</td>
                   <td className="p-4">
+                    {c.week ? (
+                      <span
+                        className={`text-xs font-mono px-2 py-0.5 border ${
+                          c.week === activeWeek
+                            ? "bg-[var(--color-brass)]/15 border-[var(--color-brass)]/40 text-[var(--color-brass-dark)]"
+                            : "border-[var(--color-line-strong)] text-[var(--color-ink-muted)]"
+                        }`}
+                      >
+                        Week {c.week}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono text-[var(--color-ink-faint)]">Always visible</span>
+                    )}
+                  </td>
+                  <td className="p-4">
                     <button onClick={() => deleteChallenge(c.id)} className="text-xs text-[var(--color-red-dark)] hover:underline">
                       DELETE
                     </button>
@@ -485,7 +589,7 @@ export default function AdminChallenges() {
                 </tr>
               ))}
               {challenges.length === 0 && (
-                <tr><td colSpan={3} className="p-6 text-center text-[var(--color-ink-muted)]">No challenges yet.</td></tr>
+                <tr><td colSpan={4} className="p-6 text-center text-[var(--color-ink-muted)]">No challenges yet.</td></tr>
               )}
             </tbody>
           </table>

@@ -32,7 +32,7 @@ export default function AdminExams() {
 
   useEffect(() => {
     loadExams();
-    api.challenges().then(setChallenges).catch(() => {});
+    api.challenges({ week: "all" }).then(setChallenges).catch(() => {});
   }, []);
 
   useEffect(() => {
